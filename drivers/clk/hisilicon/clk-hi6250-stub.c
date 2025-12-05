@@ -1,275 +1,208 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Hi6250 stub clock driver
  *
- * Copyright (c) 2015 Hisilicon Limited.
- * Copyright (c) 2015 Linaro Limited.
- *
- * Author: Leo Yan <leo.yan@linaro.org>
- * Copyright (c) 2025 Tildeguy (tildeguy@proton.me)
+ * Copyright (C) 2025, Tildeguy (tildeguy@proton.me)
  */
 
 #include <linux/clk-provider.h>
+#include <linux/device.h>
 #include <linux/err.h>
-#include <linux/kernel.h>
-#include <linux/mfd/syscon.h>
+#include <linux/init.h>
+#include <linux/io.h>
 #include <linux/mailbox_client.h>
+#include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/mfd/syscon.h>
+#include <dt-bindings/clock/hi6250-clock.h>
 
-/* Stub clocks id */
-#define HI6220_STUB_ACPU0		0
-#define HI6220_STUB_ACPU1		1
-#define HI6220_STUB_GPU			2
-#define HI6220_STUB_DDR			5
+#define HI6250_STUB_CLOCK_BASE    (0x41C)
 
-/* Mailbox message */
-#define HI6220_MBOX_MSG_LEN		8
+#define DEFINE_CLK_STUB(_id, _freqs, _cmd, _name) \
+	{                                         \
+		.id = (_id),                            \
+		.freqs = (_freqs),                      \
+		.cmd = (_cmd),                          \
+		.hw.init = &(struct clk_init_data) {    \
+			.name = #_name,                       \
+			.ops = &hi6250_stub_clk_ops,          \
+			.num_parents = 0,                     \
+			.flags = CLK_GET_RATE_NOCACHE,        \
+		},                                      \
+	}
 
-#define HI6220_MBOX_FREQ		0xA
-#define HI6220_MBOX_CMD_SET		0x3
-#define HI6220_MBOX_OBJ_AP		0x0
+#define to_stub_clk(_hw) container_of(_hw, struct hi6250_stub_clk, hw)
 
-/* CPU dynamic frequency scaling */
-#define ACPU_DFS_FREQ_MAX		0x1724
-#define ACPU_DFS_CUR_FREQ		0x17CC
-#define ACPU_DFS_FLAG			0x1B30
-#define ACPU_DFS_FREQ_REQ		0x1B34
-#define ACPU_DFS_FREQ_LMT		0x1B38
-#define ACPU_DFS_LOCK_FLAG		0xAEAEAEAE
-
-#define to_stub_clk(hw) container_of(hw, struct hi6220_stub_clk, hw)
-
-struct hi6220_stub_clk {
-	u32 id;
-
-	struct device *dev;
-	struct clk_hw hw;
-
-	struct regmap *dfs_map;
+struct hi6250_stub_clk_chan {
 	struct mbox_client cl;
 	struct mbox_chan *mbox;
 };
 
-struct hi6220_mbox_msg {
-	unsigned char type;
-	unsigned char cmd;
-	unsigned char obj;
-	unsigned char src;
-	unsigned char para[4];
+struct hi6250_stub_clk {
+	unsigned int id;
+	struct clk_hw hw;
+	unsigned long *freqs;
+	unsigned int cmd;
+	unsigned int msg[8];
+	unsigned int rate; // mhz
 };
 
-union hi6220_mbox_data {
-	unsigned int data[HI6220_MBOX_MSG_LEN];
-	struct hi6220_mbox_msg msg;
-};
+static void __iomem *freq_reg;
+static struct hi6250_stub_clk_chan stub_clk_chan;
 
-static unsigned int hi6220_acpu_get_freq(struct hi6220_stub_clk *stub_clk)
-{
-	unsigned int freq;
+static unsigned long hi6250_stub_clk_recalc_rate(
+  struct clk_hw *hw,
+	unsigned long parent_rate
+) {
+	struct hi6250_stub_clk *stub_clk = to_stub_clk(hw);
 
-	regmap_read(stub_clk->dfs_map, ACPU_DFS_CUR_FREQ, &freq);
-	return freq;
+	unsigned int freq_id = (readl(freq_reg) >> (stub_clk->id * 4)) & 0xf;
+
+	stub_clk->rate = stub_clk->freqs[freq_id];
+	return stub_clk->rate;
 }
 
-static int hi6220_acpu_set_freq(struct hi6220_stub_clk *stub_clk,
-				unsigned int freq)
-{
-	union hi6220_mbox_data data;
-
-	/* set the frequency in sram */
-	regmap_write(stub_clk->dfs_map, ACPU_DFS_FREQ_REQ, freq);
-
-	/* compound mailbox message */
-	data.msg.type = HI6220_MBOX_FREQ;
-	data.msg.cmd  = HI6220_MBOX_CMD_SET;
-	data.msg.obj  = HI6220_MBOX_OBJ_AP;
-	data.msg.src  = HI6220_MBOX_OBJ_AP;
-
-	mbox_send_message(stub_clk->mbox, &data);
+static int hi6250_stub_clk_determine_rate(
+  struct clk_hw *hw,
+  struct clk_rate_request *req
+) {
 	return 0;
 }
 
-static int hi6220_acpu_round_freq(struct hi6220_stub_clk *stub_clk,
-				  unsigned int freq)
-{
-	unsigned int limit_flag, limit_freq = UINT_MAX;
-	unsigned int max_freq;
+static int hi6250_stub_clk_set_rate(
+  struct clk_hw *hw,
+  unsigned long rate,
+	unsigned long parent_rate
+) {
+	struct hi6250_stub_clk *stub_clk = to_stub_clk(hw);
 
-	/* check the constrained frequency */
-	regmap_read(stub_clk->dfs_map, ACPU_DFS_FLAG, &limit_flag);
-	if (limit_flag == ACPU_DFS_LOCK_FLAG)
-		regmap_read(stub_clk->dfs_map, ACPU_DFS_FREQ_LMT, &limit_freq);
+	stub_clk->msg[0] = stub_clk->cmd;
+	stub_clk->msg[1] = rate / 1000000;
 
-	/* check the supported maximum frequency */
-	regmap_read(stub_clk->dfs_map, ACPU_DFS_FREQ_MAX, &max_freq);
+	dev_dbg(stub_clk_chan.cl.dev, "set rate msg[0]=0x%x msg[1]=0x%x\n",
+		stub_clk->msg[0], stub_clk->msg[1]);
 
-	/* calculate the real maximum frequency */
-	max_freq = min(max_freq, limit_freq);
+	mbox_send_message(stub_clk_chan.mbox, stub_clk->msg);
+	mbox_client_txdone(stub_clk_chan.mbox, 0);
 
-	if (WARN_ON(freq > max_freq))
-		freq = max_freq;
-
-	return freq;
-}
-
-static unsigned long hi6220_stub_clk_recalc_rate(struct clk_hw *hw,
-		unsigned long parent_rate)
-{
-	u32 rate = 0;
-	struct hi6220_stub_clk *stub_clk = to_stub_clk(hw);
-
-	switch (stub_clk->id) {
-	case HI6220_STUB_ACPU0:
-		rate = hi6220_acpu_get_freq(stub_clk);
-
-		/* convert from kHz to Hz */
-		rate *= 1000;
-		break;
-
-	default:
-		dev_err(stub_clk->dev, "%s: un-supported clock id %d\n",
-			__func__, stub_clk->id);
-		break;
-	}
-
-	return rate;
-}
-
-static int hi6220_stub_clk_set_rate(struct clk_hw *hw, unsigned long rate,
-		unsigned long parent_rate)
-{
-	struct hi6220_stub_clk *stub_clk = to_stub_clk(hw);
-	unsigned long new_rate = rate / 1000;  /* kHz */
-	int ret = 0;
-
-	switch (stub_clk->id) {
-	case HI6220_STUB_ACPU0:
-		ret = hi6220_acpu_set_freq(stub_clk, new_rate);
-		if (ret < 0)
-			return ret;
-
-		break;
-
-	default:
-		dev_err(stub_clk->dev, "%s: un-supported clock id %d\n",
-			__func__, stub_clk->id);
-		break;
-	}
-
-	pr_debug("%s: set rate=%ldkHz\n", __func__, new_rate);
-	return ret;
-}
-
-static int hi6220_stub_clk_determine_rate(struct clk_hw *hw,
-					  struct clk_rate_request *req)
-{
-	struct hi6220_stub_clk *stub_clk = to_stub_clk(hw);
-	unsigned long new_rate = req->rate / 1000;  /* kHz */
-
-	switch (stub_clk->id) {
-	case HI6220_STUB_ACPU0:
-		new_rate = hi6220_acpu_round_freq(stub_clk, new_rate);
-
-		/* convert from kHz to Hz */
-		new_rate *= 1000;
-		break;
-
-	default:
-		dev_err(stub_clk->dev, "%s: un-supported clock id %d\n",
-			__func__, stub_clk->id);
-		break;
-	}
-
-	req->rate = new_rate;
-
+	stub_clk->rate = rate;
 	return 0;
 }
 
-static const struct clk_ops hi6220_stub_clk_ops = {
-	.recalc_rate	= hi6220_stub_clk_recalc_rate,
-	.determine_rate = hi6220_stub_clk_determine_rate,
-	.set_rate	= hi6220_stub_clk_set_rate,
+static const struct clk_ops hi6250_stub_clk_ops = {
+	.recalc_rate    = hi6250_stub_clk_recalc_rate,
+	.determine_rate = hi6250_stub_clk_determine_rate,
+	.set_rate       = hi6250_stub_clk_set_rate,
 };
 
-static int hi6220_stub_clk_probe(struct platform_device *pdev)
-{
+// mHz
+static unsigned long hi6250_stub_clk_freqs_cluster0[] = {
+	480000000000,
+	807000000000,
+	1306000000000,
+	1709000000000,
+};
+static unsigned long hi6250_stub_clk_freqs_cluster1[] = {
+	1402000000000,
+	1805000000000,
+	2016000000000,
+	2112000000000,
+	2362000000000,
+};
+static unsigned long hi6250_stub_clk_freqs_ddr[] = {
+	120000000000,
+	240000000000,
+	360000000000,
+	533000000000,
+	800000000000,
+	933000000000,
+};
+static unsigned long hi6250_stub_clk_freqs_gpu[] = {
+	120000000000,
+	240000000000,
+	360000000000,
+	480000000000,
+	680000000000,
+	800000000000,
+	900000000000,
+};
+
+static struct hi6250_stub_clk hi6250_stub_clks[HI6250_CLK_STUB_NUM] = {
+	DEFINE_CLK_STUB(HI6250_CLK_STUB_CLUSTER0, hi6250_stub_clk_freqs_cluster0, 0x0001030A, "cpu-cluster.0"),
+	DEFINE_CLK_STUB(HI6250_CLK_STUB_CLUSTER1, hi6250_stub_clk_freqs_cluster1, 0x0002030A, "cpu-cluster.1"),
+	DEFINE_CLK_STUB(HI6250_CLK_STUB_DDR, hi6250_stub_clk_freqs_ddr, 0x00040309, "clk_ddrc"),
+	DEFINE_CLK_STUB(HI6250_CLK_STUB_GPU, hi6250_stub_clk_freqs_gpu, 0x0003030A, "clk_g3d"),
+};
+
+static struct clk_hw *hi6250_stub_clk_hw_get(
+  struct of_phandle_args *clkspec,
+	void *data
+) {
+	unsigned int idx = clkspec->args[0];
+
+	if (idx >= HI6250_CLK_STUB_NUM) {
+		pr_err("%s: invalid index %u\n", __func__, idx);
+		return ERR_PTR(-EINVAL);
+	}
+
+	return &hi6250_stub_clks[idx].hw;
+}
+
+static int hi6250_stub_clk_probe(
+  struct platform_device *pdev
+) {
 	struct device *dev = &pdev->dev;
-	struct clk_init_data init;
-	struct hi6220_stub_clk *stub_clk;
-	struct clk *clk;
 	struct device_node *np = pdev->dev.of_node;
+	unsigned int i;
 	int ret;
 
-	stub_clk = devm_kzalloc(dev, sizeof(*stub_clk), GFP_KERNEL);
-	if (!stub_clk)
-		return -ENOMEM;
-
-	stub_clk->dfs_map = syscon_regmap_lookup_by_phandle(np,
-				"hisilicon,hi6220-clk-sram");
-	if (IS_ERR(stub_clk->dfs_map)) {
-		dev_err(dev, "failed to get sram regmap\n");
-		return PTR_ERR(stub_clk->dfs_map);
-	}
-
-	stub_clk->hw.init = &init;
-	stub_clk->dev = dev;
-	stub_clk->id = HI6220_STUB_ACPU0;
-
-	/* Use mailbox client with blocking mode */
-	stub_clk->cl.dev = dev;
-	stub_clk->cl.tx_done = NULL;
-	stub_clk->cl.tx_block = true;
-	stub_clk->cl.tx_tout = 500;
-	stub_clk->cl.knows_txdone = false;
+	/* Use mailbox client without blocking */
+	stub_clk_chan.cl.dev = dev;
+	stub_clk_chan.cl.tx_done = NULL;
+	stub_clk_chan.cl.tx_block = false;
+	stub_clk_chan.cl.knows_txdone = false;
 
 	/* Allocate mailbox channel */
-	stub_clk->mbox = mbox_request_channel(&stub_clk->cl, 0);
-	if (IS_ERR(stub_clk->mbox)) {
-		dev_err(dev, "failed get mailbox channel\n");
-		return PTR_ERR(stub_clk->mbox);
+	stub_clk_chan.mbox = mbox_request_channel(&stub_clk_chan.cl, 0);
+	if (IS_ERR(stub_clk_chan.mbox))
+		return PTR_ERR(stub_clk_chan.mbox);
+
+	freq_reg = syscon_regmap_lookup_by_phandle(np,
+				"hisilicon,hi6250-sys-ctrl");
+	if (IS_ERR(freq_reg)) {
+		dev_err(dev, "failed to get sysctrl regmap\n");
+		return PTR_ERR(freq_reg);
 	}
 
-	init.name = "acpu0";
-	init.ops = &hi6220_stub_clk_ops;
-	init.num_parents = 0;
-	init.flags = 0;
+	freq_reg += HI6250_STUB_CLOCK_BASE;
 
-	clk = devm_clk_register(dev, &stub_clk->hw);
-	if (IS_ERR(clk))
-		return PTR_ERR(clk);
-
-	ret = of_clk_add_provider(np, of_clk_src_simple_get, clk);
-	if (ret) {
-		dev_err(dev, "failed to register OF clock provider\n");
-		return ret;
+	for (i = 0; i < HI6250_CLK_STUB_NUM; i++) {
+		ret = devm_clk_hw_register(&pdev->dev, &hi6250_stub_clks[i].hw);
+		if (ret)
+			return ret;
 	}
 
-	/* initialize buffer to zero */
-	regmap_write(stub_clk->dfs_map, ACPU_DFS_FLAG, 0x0);
-	regmap_write(stub_clk->dfs_map, ACPU_DFS_FREQ_REQ, 0x0);
-	regmap_write(stub_clk->dfs_map, ACPU_DFS_FREQ_LMT, 0x0);
-
-	dev_dbg(dev, "Registered clock '%s'\n", init.name);
-	return 0;
+	return devm_of_clk_add_hw_provider(&pdev->dev, hi6250_stub_clk_hw_get,
+					   hi6250_stub_clks);
 }
 
-static const struct of_device_id hi6220_stub_clk_of_match[] = {
-	{ .compatible = "hisilicon,hi6220-stub-clk", },
+static const struct of_device_id hi6250_stub_clk_of_match[] = {
+	{ .compatible = "hisilicon,hi6250-stub-clk", },
 	{}
 };
 
-static struct platform_driver hi6220_stub_clk_driver = {
-	.driver	= {
-		.name = "hi6220-stub-clk",
-		.of_match_table = hi6220_stub_clk_of_match,
+static struct platform_driver hi6250_stub_clk_driver = {
+	.probe	= hi6250_stub_clk_probe,
+	.driver = {
+		.name = "hi6250-stub-clk",
+		.of_match_table = hi6250_stub_clk_of_match,
 	},
-	.probe = hi6220_stub_clk_probe,
 };
 
-static int __init hi6220_stub_clk_init(void)
+static int __init hi6250_stub_clk_init(void)
 {
-	return platform_driver_register(&hi6220_stub_clk_driver);
+	return platform_driver_register(&hi6250_stub_clk_driver);
 }
-subsys_initcall(hi6220_stub_clk_init);
+subsys_initcall(hi6250_stub_clk_init);
