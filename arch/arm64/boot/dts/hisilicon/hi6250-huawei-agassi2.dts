@@ -1,0 +1,130 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Device tree for Huawei Mediapad T5
+ *
+ * Copyright (C) 2025, Tildeguy (tildeguy@proton.me)
+ */
+
+/dts-v1/;
+#include "hi6250.dtsi"
+
+/ {
+	model = "Huawei Mediapad T5";
+	compatible = "huawei,agassi2", "hisilicon,hi6250";
+	chassis-type = "handset";
+
+    aliases {
+
+    };
+
+    chosen {
+        bootargs = "earlycon=tty0 console=tty0";
+
+        #address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		stdout-path = "framebuffer0";
+
+        framebuffer0: framebuffer@e8600000 {
+			compatible = "simple-framebuffer";
+			reg = <0 0xe8600000 0 (1080 * 1920 * 4)>;
+			width = <1080>;
+			height = <1920>;
+			stride = <(1920 * 4)>;
+			format = "a8r8g8b8";
+			status = "okay";
+		};
+    };
+	
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		ddr-training1@07b00000 {
+			reg = <0x0 0x07b00000 0x0 0x8000>;
+		};
+
+		mntndump@e000000 {
+			reg = <0x0 0xe000000 0x0 0x1000>;
+			no-map;
+		};
+
+		graphic@31000000 {
+			reg = <0x0 0x31000000 0x0 0x1a40000>;
+		};
+
+		bbox-mem@34000000 {
+			reg = <0x0 0x34000000 0x0 0x800000>;
+		};
+
+		pstore-mem@34800000 {
+			reg = <0x0 0x34800000 0x0 0x100000>;
+		};
+
+		lpmx-core@34900000 {
+			reg = <0x0 0x34900000 0x0 0x100000>;
+			no-map;
+		};
+
+		fka-mem@34a00000 {
+			reg = <0x0 0x34a00000 0x0 0x78000>;
+			no-map;
+		};
+
+		smmu-pdg@34a78000 {
+			reg = <0x0 0x34a78000 0x0 0x8000>;
+		};
+
+		sensorhub-share-mem@34a80000 {
+			reg = <0x0 0x34a80000 0x0 0x80000>;
+			no-map;
+		};
+
+		isp-boot@34b00000 {
+			reg = <0x0 0x34b00000 0x0 0x20000>;
+			no-map;
+		};
+
+		hifi-data@34f00000 {
+			reg = <0x0 0x34f00000 0x0 0x400000>;
+			no-map;
+		};
+
+		hifi-ipc@35300000 {
+			reg = <0x0 0x35300000 0x0 0x100000>;
+			no-map;
+		};
+
+		hifi-s@35400000 {
+			reg = <0x0 0x35400000 0x0 0xa00000>;
+			no-map;
+		};
+
+		bl31-s@35e00000 {
+			reg = <0x0 0x35e00000 0x0 0xc0000>;
+			no-map;
+		};
+
+		sensorhub-s@36000000 {
+			reg = <0x0 0x36000000 0x0 0x200000>;
+			no-map;
+		};
+
+		secureos-s@36200000 {
+			reg = <0x0 0x36200000 0x0 0x1e00000>;
+			no-map;
+		};
+
+		modem-s@38000000 {
+			reg = <0x0 0x38000000 0x0 0x6c00000>;
+			no-map;
+		};
+
+		modem-share-mem@3ec00000 {
+			reg = <0x0 0x3ec00000 0x0 0x500000>;
+			no-map;
+		};
+    };
+};
