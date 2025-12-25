@@ -41,31 +41,31 @@
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupt-parent = <&gic>;
-		interrupts = <1 13 0xff08>
-					 <1 14 0xff08>
-					 <1 11 0xff08>
-					 <1 10 0xff08>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
 		clock-frequency = <0x1d4c00>;
 	};
 
 	pmu {
 		compatible = "arm,cortex-a53-pmu";
 		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>,
-		<GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>,
-		<GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
-		<GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>,
-		<GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>,
-		<GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>,
-		<GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>,
-		<GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-affinity = <&cpu0>,
-		<&cpu1>,
-		<&cpu2>,
-		<&cpu3>,
-		<&cpu4>,
-		<&cpu5>,
-		<&cpu6>,
-		<&cpu7>;
+			<&cpu1>,
+			<&cpu2>,
+			<&cpu3>,
+			<&cpu4>,
+			<&cpu5>,
+			<&cpu6>,
+			<&cpu7>;
 	};
 	
 	cpus {
@@ -115,7 +115,7 @@
 				min-residency-us = <0xbb8>;
 			};
 
-			CLUSTER_SLEEP_0: cluster-sleep {
+			CLUSTER_SLEEP_0: cluster-sleep-0 {
 				compatible = "arm,idle-state";
 				local-timer-stop;
 				arm,psci-suspend-param = <0x1010000>;
@@ -124,7 +124,7 @@
 				min-residency-us = <0x2ee0>;
 			};
 			
-			CLUSTER_SLEEP_1: cluster-sleep {
+			CLUSTER_SLEEP_1: cluster-sleep-1 {
 				compatible = "arm,idle-state";
 				local-timer-stop;
 				arm,psci-suspend-param = <0x1010000>;
@@ -284,7 +284,7 @@
 		};
 	};
 
-	cpu_opp_table_1: opp-table-0 {
+	cpu_opp_table_1: opp-table-1 {
 		opp-shared;
 		compatible = "operating-points-v2";
 
@@ -334,14 +334,16 @@
 			compatible = "arm,sp804";
 			reg = <0x0 0xfff14000 0x0 0x1000>;
 			interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&osc32k &osc32k &pclk>;
+				<GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ao_ctrl HI6250_OSC32KHZ>,
+				<&ao_ctrl HI6250_OSC32KHZ>,
+				<&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "osc32khz", "osc32khz", "apb_pclk";
 		};
 		
 		ao_ctrl: ao_ctrl@0 {
 			compatible = "hisilicon,hi6250-aoctrl", "syscon";
-			reg = <0x0 0x00000000 0x0 0xffffffff>
+			reg = <0x0 0x00000000 0x0 0xffffffff>;
 			#clock-cells = <1>;
 		};
 
@@ -395,6 +397,10 @@
 			#reset-cells = <2>;
 		};
 
+		// we need pinctrl at first:
+
+		/*
+
 		i2c0: i2c@ffd71000 {
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0xffd71000 0x0 0x1000>;
@@ -446,6 +452,8 @@
 			pinctrl-0 = <&i2c4_pmx_func &i2c4_cfg_func>;
 			status = "disabled";
 		};
+
+		*/
 
 		gpio0: gpio@e8a0b000 {
 			reg = <0 0xe8a0b000 0 0x1000>;
@@ -891,4 +899,4 @@
 			pinctrl-single,register-width = <32>;
 		};
 	};
-}
+};
