@@ -8,6 +8,7 @@
 /dts-v1/;
 
 #include "hi6250.dtsi"
+#include "hi6250-pins.dtsi"
 
 / {
     model = "Huawei P Smart";
@@ -50,5 +51,9 @@
 			console-size = <0x80000>;
 			ftrace-size = <0x00000>;
 		};  
+    };
+
+    soc {
+        
     };
 };

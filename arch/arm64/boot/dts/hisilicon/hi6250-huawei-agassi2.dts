@@ -8,6 +8,7 @@
 /dts-v1/;
 
 #include "hi6250.dtsi"
+#include "hi6250-pins.dtsi"
 
 / {
 	model = "Huawei Mediapad T5";
@@ -128,4 +129,8 @@
 			no-map;
 		};
     };
+
+	soc {
+
+	};
 };

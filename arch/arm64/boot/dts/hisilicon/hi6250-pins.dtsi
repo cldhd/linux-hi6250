@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+#include <dt-bindings/pinctrl/hisi.h>
+
+&pmx0 {
+	status = "ok";
+
+	/* i2c3 */
+	i2c3_pmx_func: i2c3-pmx-func {
+        pinctrl-single,pins = <0x018 MUX_M0>, <0x01C MUX_M0>;
+	};
+
+	/* i2c4 */
+	i2c4_pmx_func: i2c4-pmx-func {
+        pinctrl-single,pins = <0x088 MUX_M1>, <0x08C MUX_M1>;
+	};
+};
+
+&pmx1 {
+	status = "ok";
+
+	/* i2c0 */
+	i2c0_pmx_func: i2c0-pmx-func {
+        pinctrl-single,pins = <0x014 MUX_M1>, <0x018 MUX_M1>;
+	};
+
+	/* i2c2 */
+	i2c2_pmx_func: i2c2-pmx-func {
+        pinctrl-single,pins = <0x024 MUX_M1>, <0x028 MUX_M1>;
+	};
+};
+
+&pmx2 {
+	status = "ok";
+
+	/* i2c3 */
+	i2c3_cfg_func: i2c3-cfg-pins {
+        pinctrl-single,pins = <0x024 0x0>, <0x028 0x0>;
+        pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+        pinctrl-single,bias-pullup = <PULL_UP PULL_UP PULL_DIS PULL_UP>;
+        pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	/* i2c4 */
+	i2c4_cfg_func: i2c4-cfg-pins {
+         pinctrl-single,pins = <0x094 0x0>, <0x098 0x0>;
+         pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+         pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
+         pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+};
+
+&pmx3 {
+	status = "ok";
+	
+	/* i2c0 */
+	i2c0_cfg_func: i2c0-cfg-pins {
+         pinctrl-single,pins = <0x01C 0x0>, <0x020 0x0>;
+         pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+         pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
+         pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	/* i2c2 */
+	i2c2_cfg_func: i2c2-cfg-pins {
+        pinctrl-single,pins = <0x02C 0x0>, <0x030 0x0>;
+        pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+        pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
+        pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+};
+
+&i2c0 {
+	status = "ok";
+};
+
+&i2c2 {
+	status = "ok";
+};
+
+&i2c3 {
+	status = "ok";
+};
+
+&i2c4 {
+	status = "ok";
+};
