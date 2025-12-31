@@ -7,8 +7,10 @@
 
 /dts-v1/;
 
+#include <dt-bindings/gpio/gpio.h>
+
 #include "hi6250.dtsi"
-#include "hi6250-pins.dtsi"
+#include "hi6250-huawei-pins.dtsi"
 
 / {
 	model = "Huawei Mediapad T5";
@@ -133,4 +135,9 @@
 	soc {
 
 	};
+};
+
+&pmic {
+	status = "ok";
+	gpios = <&gpio23 7 GPIO_ACTIVE_HIGH>;
 };

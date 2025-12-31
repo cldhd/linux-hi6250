@@ -7,7 +7,7 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/hi6250-clock.h>
-#include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	compatible = "hisilicon,hi6250";
@@ -895,6 +895,123 @@
 			#interrupt-cells = <2>;
 			clocks = <&ao_ctrl 2>;
 			clock-names = "apb_pclk";
+		};
+
+		pmic: pmic@fff34000 {
+			compatible = "hisilicon,hi655x-pmic";
+			reg = <0x0 0xfff34000 0x0 0x1000>;
+			status = "disable";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			pmic-gpios = <&gpio17 2 GPIO_ACTIVE_HIGH>;
+			#clock-cells = <0>;
+
+			regulators {
+				ldo4: LDO4 {
+					regulator-name = "ldo4";
+					regulator-min-microvolt = <1700000>;
+					regulator-max-microvolt = <1900000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo9: LDO9 {
+					regulator-name = "ldo9";
+					regulator-min-microvolt = <1750000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-enable-ramp-delay = <360>;
+				};
+
+				ldo13: LDO13 {
+					regulator-name = "ldo13";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <2900000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo15: LDO15 {
+					regulator-name = "ldo15";
+					regulator-min-microvolt = <1750000>;
+					regulator-max-microvolt = <3000000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo16: LDO16 {
+					regulator-name = "ldo16";
+					regulator-min-microvolt = <1750000>;
+					regulator-max-microvolt = <3000000>;
+					regulator-enable-ramp-delay = <360>;
+				};
+
+				ldo17: LDO17 {
+					regulator-name = "ldo17";
+					regulator-min-microvolt = <2600000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo19: LDO19 {
+					regulator-name = "ldo19";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <2900000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo20: LDO20 {
+					regulator-name = "ldo20";
+					regulator-min-microvolt = <800000>;
+					regulator-max-microvolt = <1320000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo21: LDO21 {
+					regulator-name = "ldo21";
+					regulator-min-microvolt = <1700000>;
+					regulator-max-microvolt = <1900000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo24: LDO24 {
+					regulator-name = "ldo24";
+					regulator-min-microvolt = <2600000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo25: LDO25 {
+					regulator-name = "ldo25";
+					regulator-min-microvolt = <1500000>;
+					regulator-max-microvolt = <3000000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo29: LDO29 {
+					regulator-name = "ldo29";
+					regulator-min-microvolt = <1000000>;
+					regulator-max-microvolt = <1300000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo31: LDO31 {
+					regulator-name = "ldo31";
+					regulator-min-microvolt = <2500000>;
+					regulator-max-microvolt = <3200000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo32: LDO32 {
+					regulator-name = "ldo32";
+					regulator-min-microvolt = <900000>;
+					regulator-max-microvolt = <1320000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+
+				ldo33: LDO33 {
+					regulator-name = "ldo33";
+					regulator-min-microvolt = <1700000>;
+					regulator-max-microvolt = <1900000>;
+					regulator-enable-ramp-delay = <120>;
+				};
+			};
 		};
 	};
 };
