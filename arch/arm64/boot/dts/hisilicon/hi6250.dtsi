@@ -453,9 +453,9 @@
 			interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
 			dma-names = "rx", "tx";
 			dmas = <&iomcu_dma 8 &iomcu_dma 9>;
-			clocks = <&crg_ctrl HI6250_CLK_UART3>,
+			clocks = <&sys_ctrl HI6250_CLK_GATE_UART3>,
 				 <&ao_ctrl HI6250_APB_PCLK>;
-			clock-names = "ao_ctrl", "apb_pclk";
+			clock-names = "clk_uart3", "apb_pclk";
 			resets = <&iomcu_rst 0x20 11>; // TODO: review
 			pinctrl-names = "default";
 			pinctrl-0 = <&uart3_pmx_func &uart3_cfg_func>;
@@ -612,8 +612,8 @@
 			gpio-ranges = <&pmx0 1 0 3 &pmx0 6 3 2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO0>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio0", "apb_pclk";
 		};
 
 		gpio1: gpio@e8a0c000 {
@@ -625,8 +625,8 @@
 			gpio-ranges = <&pmx0 0 5 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO1>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio1", "apb_pclk";
 		};
 
 		gpio2: gpio@e8a0d000 {
@@ -638,8 +638,8 @@
 			gpio-ranges = <&pmx0 0 13 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO2>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio2", "apb_pclk";
 		};
 
 		gpio3: gpio@e8a0e000 {
@@ -651,8 +651,8 @@
 			gpio-ranges = <&pmx0 0 21 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO3>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio3", "apb_pclk";
 		};
 
 		gpio4: gpio@e8a0f000 {
@@ -664,8 +664,8 @@
 			gpio-ranges = <&pmx0 0 29 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO4>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio4", "apb_pclk";
 		};
 
 		gpio5: gpio@e8a10000 {
@@ -677,8 +677,8 @@
 			gpio-ranges = <&pmx0 0 37 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO5>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio5", "apb_pclk";
 		};
 
 		gpio6: gpio@e8a11000 {
@@ -690,8 +690,8 @@
 			gpio-ranges = <&pmx0 0 45 6>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO6>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio6", "apb_pclk";
 		};
 
 		gpio7: gpio@e8a12000 {
@@ -703,8 +703,8 @@
 			gpio-ranges = <&pmx0 0 53 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO7>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio7", "apb_pclk";
 		};
 
 		gpio8: gpio@e8a13000 {
@@ -716,8 +716,8 @@
 			gpio-ranges = <&pmx0 0 61 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO8>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio8", "apb_pclk";
 		};
 
 		gpio9: gpio@e8a14000 {
@@ -729,8 +729,8 @@
 			gpio-ranges = <&pmx0 0 69 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO9>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio9", "apb_pclk";
 		};
 
 		gpio10: gpio@e8a15000 {
@@ -742,8 +742,8 @@
 			gpio-ranges = <&pmx0 0 77 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO10>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio10", "apb_pclk";
 		};
 
 		gpio11: gpio@e8a16000 {
@@ -755,8 +755,8 @@
 			gpio-ranges = <&pmx0 0 85 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO11>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio11", "apb_pclk";
 		};
 
 		gpio12: gpio@e8a17000 {
@@ -768,8 +768,8 @@
 			gpio-ranges = <&pmx0 0 93 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO12>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio12", "apb_pclk";
 		};
 
 		gpio13: gpio@e8a18000 {
@@ -781,8 +781,8 @@
 			gpio-ranges = <&pmx0 0 101 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO13>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio13", "apb_pclk";
 		};
 
 		gpio14: gpio@e8a19000 {
@@ -794,8 +794,8 @@
 			gpio-ranges = <&pmx0 0 109 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO14>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio14", "apb_pclk";
 		};
 
 		gpio15: gpio@e8a1a000 {
@@ -807,8 +807,8 @@
 			gpio-ranges = <&pmx0 0 117 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO15>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio15", "apb_pclk";
 		};
 
 		gpio16: gpio@e8a1b000 {
@@ -820,8 +820,8 @@
 			gpio-ranges = <&pmx0 0 125 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO16>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio16", "apb_pclk";
 		};
 
 		gpio17: gpio@e8a1c000 {
@@ -833,8 +833,8 @@
 			gpio-ranges = <&pmx0 0 133 5>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO17>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio17", "apb_pclk";
 		};
 
 		gpio18: gpio@e8a1d000 {
@@ -846,8 +846,8 @@
 			gpio-ranges = <&pmx0 0 51 2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO18>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio18", "apb_pclk";
 		};
 
 		gpio19: gpio@e8a1e000 {
@@ -858,8 +858,8 @@
 			#gpio-cells = <2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO19>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio19", "apb_pclk";
 		};
 
 		gpio20: gpio@e8a1f000 {
@@ -870,8 +870,8 @@
 			#gpio-cells = <2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO20>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio20", "apb_pclk";
 		};
 
 		gpio21: gpio@e8a20000 {
@@ -882,8 +882,8 @@
 			#gpio-cells = <2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&crg_ctrl HI6250_PCLK_GPIO21>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_gpio21", "apb_pclk";
 		};
 
 		gpio22: gpio@fff0b000 {
@@ -895,8 +895,8 @@
 			gpio-ranges = <&pmx1 2 0 6>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO0>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio0", "apb_pclk";
 		};
 
 		gpio23: gpio@fff0c000 {
@@ -908,14 +908,12 @@
 			gpio-ranges = <&pmx1 0 6 7>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO1>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio1", "apb_pclk";
 		};
 
 		gpio24: gpio@fff0d000 {
 			compatible = "arm,pl061", "arm,primecell";
-			// compatible = "arm,pl061", "arm,primecell", "hisi,poweroff";
-			// sec-controller;
 			reg = <0 0xfff0d000 0 0x1000>;
 			interrupts = <0 108 0x4>;
 			gpio-controller;
@@ -923,8 +921,8 @@
 			gpio-ranges = <&pmx1 0 13 6>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO2>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio2", "apb_pclk";
 		};
 
 		gpio25: gpio@fff0e000 {
@@ -936,8 +934,8 @@
 			gpio-ranges = <&pmx1 0 21 4 &pmx1 5 25 3>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO3>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio3", "apb_pclk";
 		};
 
 		gpio26: gpio@fff0f000 {
@@ -949,8 +947,8 @@
 			gpio-ranges = <&pmx1 0 28 8>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO4>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio4", "apb_pclk";
 		};
 
 		gpio27: gpio@fff10000 {
@@ -962,8 +960,8 @@
 			gpio-ranges = <&pmx1 0 36 3>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO5>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio5", "apb_pclk";
 		};
 
 		gpio28: gpio@fff1d000 {
@@ -975,8 +973,8 @@
 			gpio-ranges = <&pmx1 0 19 2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO6>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio6", "apb_pclk";
 		};
 
 		gpio29: gpio@fff1e000 {
@@ -988,8 +986,8 @@
 			gpio-ranges = <&pmx1 0 39 4>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO7>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio7", "apb_pclk";
 		};
 
 		gpio30: gpio@fff1f000 {
@@ -1000,8 +998,8 @@
 			#gpio-cells = <2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			clocks = <&ao_ctrl 2>;
-			clock-names = "apb_pclk";
+			clocks = <&sys_ctrl HI6250_PCLK_AO_GPIO8>, <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "pclk_ao_gpio8", "apb_pclk";
 		};
 
 		mali: gpu@e8970000 {
@@ -1144,7 +1142,7 @@
 			dma-requests = <32>;
 			dma-channel-mask = <0xfffe>;
 			interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&crg_ctrl HI6250_CLK_DMAC> <&ao_ctrl HI6250_APB_PCLK>;
+			clocks = <&crg_ctrl HI6250_CLK_DMAC>, <&ao_ctrl HI6250_APB_PCLK>;
 			dma-no-cci;
 			dma-type = "hi3660_dma";
 		};
@@ -1158,7 +1156,7 @@
 			dma-requests = <32>;
 			dma-channel-mask = <0xf0>;
 			interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&crg_ctrl HI6250_CLK_DMA_IOMCU> <&ao_ctrl HI6250_APB_PCLK>;
+			clocks = <&crg_ctrl HI6250_CLK_DMA_IOMCU>, <&ao_ctrl HI6250_APB_PCLK>;
 			dma-no-cci;
 			dma-type = "hi3660_dma";
 		};

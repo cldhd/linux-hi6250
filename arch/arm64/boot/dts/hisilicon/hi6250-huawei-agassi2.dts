@@ -179,6 +179,6 @@
 
 &pmic {
 	status = "ok";
-	gpios = <&gpio23 7 GPIO_ACTIVE_HIGH>;
+	pmic-gpios = <&gpio23 7 GPIO_ACTIVE_HIGH>;
 };
 
