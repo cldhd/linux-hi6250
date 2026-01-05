@@ -412,9 +412,7 @@
 				 <&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "clk_uart0_fac", "apb_pclk";
 			resets = <&crg_rst 0x78 10>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&uart0_pmx_func &uart0_cfg_func>;
-			status = "disabled";
+			status = "disable";
 		};
 
 		uart1: serial@fdf00000 {
@@ -427,9 +425,7 @@
 				 <&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "clk_uart1", "apb_pclk";
 			resets = <&crg_rst 0x78 11>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&uart1_pmx_func &uart1_cfg_func>;
-			status = "disabled";
+			status = "disable";
 		};
 
 		uart2: serial@fdf03000 {
@@ -442,9 +438,7 @@
 				 <&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "clk_uart2", "apb_pclk";
 			resets = <&crg_rst 0x78 12>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&uart2_pmx_func &uart2_cfg_func>;
-			status = "disabled";
+			status = "disable";
 		};
 
 		uart3: serial@ffd74000 {
@@ -457,9 +451,7 @@
 				 <&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "clk_uart3", "apb_pclk";
 			resets = <&iomcu_rst 0x20 11>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&uart3_pmx_func &uart3_cfg_func>;
-			status = "disabled";
+			status = "disable";
 		};
 
 		uart4: serial@fdf01000 {
@@ -472,9 +464,7 @@
 				 <&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "clk_uart4", "apb_pclk";
 			resets = <&crg_rst 0x78 14>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&uart4_pmx_func &uart4_cfg_func>;
-			status = "disabled";
+			status = "disable";
 		};
 
 		uart5: serial@fdf05000 {
@@ -487,7 +477,7 @@
 				 <&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "clk_uart5", "apb_pclk";
 			resets = <&crg_rst 0x78 15>; // TODO: review
-			status = "disabled";
+			status = "disable";
 		};
 
 		uart6: serial@fff32000 {
@@ -498,9 +488,7 @@
 				 <&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "uart6clk", "apb_pclk";
 			resets = <&sys_rst 0x504 9>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&uart6_pmx_func &uart6_cfg_func>;
-			status = "disabled";
+			status = "disable";
 		};
 
 		range: gpio-range {
@@ -1173,6 +1161,37 @@
 				hisilicon,pctrl-syscon = <&pmu_ctrl>;
 				hisilicon,eye-diagram-param = <0x059066DB>;
 			};
+		};
+
+		/* SD */
+		dwmmc1: dwmmc1@ff37f000 {
+			compatible = "hisilicon,hi3660-dw-mshc";
+			reg = <0x0 0xff37f000 0x0 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI6250_CLK_SD>, <&crg_ctrl HI6250_HCLK_SD>;
+			clock-names = "clk_sd", "hclk_sd";
+			hisilicon,peripheral-syscon = <&sys_ctrl>;
+			card-detect-delay = <200>;
+			vmmc-supply = <&ldo16>;
+			vqmmc-supply = <&ldo9>;
+			cd-vol = <0>;
+			cd-gpio = <&gpio25 3 0>;
+			status = "disable";
+		};
+
+		/* SDIO */
+		dwmmc2: dwmmc2@ff37d000 {
+			compatible = "hisilicon,hi3660-dw-mshc";
+			reg = <0x0 0xff37d000 0x0 0x1000>;
+			#address-cells = <0x1>;
+			#size-cells = <0x0>;
+			interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI6250_CLK_SDIO0>, <&crg_ctrl HI6250_HCLK_SDIO0>;
+			clock-names = "clk_sdio0", "hclk_sdio0";
+			card-detect-delay = <200>;
+			status = "disable";
 		};
 	};
 };

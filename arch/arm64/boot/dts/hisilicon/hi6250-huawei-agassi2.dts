@@ -10,7 +10,7 @@
 #include <dt-bindings/gpio/gpio.h>
 
 #include "hi6250.dtsi"
-#include "hi6250-huawei-pins.dtsi"
+#include "hi6250-pinctrl.dtsi"
 
 / {
 	model = "Huawei Mediapad T5";
@@ -137,6 +137,7 @@
 	};
 };
 
+/* enable pinmux */
 &pmx0 {
 	status = "ok";
 };
@@ -153,15 +154,8 @@
 	status = "ok";
 };
 
-&i2c0 {
-	status = "ok";
-};
-
+/* enable i2c2,4 */
 &i2c2 {
-	status = "ok";
-};
-
-&i2c3 {
 	status = "ok";
 };
 
@@ -169,19 +163,43 @@
 	status = "ok";
 };
 
+/* enable dma */
 &dma0 {
 	status = "ok";
 };
 
+&iomcu_dma {
+	status = "ok";
+};
+
+/* enable uart0,2,3,4,6 */
 &uart0 {
 	status = "ok";
 };
 
+&uart2 {
+	status = "ok";
+};
+
+&uart3 {
+	status = "ok";
+};
+
+&uart4 {
+	status = "ok";
+};
+
+&uart6 {
+	status = "ok";
+};
+
+/* enable pmic */
 &pmic {
 	status = "ok";
 	pmic-gpios = <&gpio23 7 GPIO_ACTIVE_HIGH>;
 };
 
+/* enable usb */
 &usb3_otg_bc {
 	status = "ok";
 };

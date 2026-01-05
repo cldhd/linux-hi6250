@@ -1,0 +1,330 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Pinctrl for Huawei Hi6250
+ *
+ * Copyright (C) 2025, Tildeguy (tildeguy@mainlining.org)
+ */
+
+#include <dt-bindings/pinctrl/hisi.h>
+
+&pmx0 {
+	i2c3_pmx_func: i2c3-pmx-func {
+        pinctrl-single,pins = <
+			0x018 MUX_M0
+			0x01C MUX_M0
+		>;
+	};
+
+	i2c4_pmx_func: i2c4-pmx-func {
+        pinctrl-single,pins = <
+			0x088 MUX_M1
+			0x08C MUX_M1
+		>;
+	};
+
+	uart0_pmx_func: uart0-pmx-func {
+		pinctrl-single,pins = <
+			0x078 MUX_M1
+			0x07C MUX_M1
+		>;
+	};
+	
+	uart1_pmx_func: uart1-pmx-func {
+        pinctrl-single,pins = <
+			0x0D8 MUX_M0
+			0x0DC MUX_M0
+			0x0E0 MUX_M1
+			0x0E4 MUX_M1
+		>;
+	};
+
+	uart3_pmx_func: uart3-pmx-func {
+        pinctrl-single,pins = <
+			0x110 MUX_M1
+			0x114 MUX_M1
+			0x118 MUX_M1
+			0x11C MUX_M1
+		>;
+	};
+
+	uart4_pmx_func: uart4-pmx-func {
+        pinctrl-single,pins = <
+			0x120 MUX_M1
+			0x124 MUX_M1
+			0x128 MUX_M1
+			0x12C MUX_M1
+		>;
+	};
+	
+	uart6_pmx_func: uart6-pmx-func {
+        pinctrl-single,pins = <
+			0x108 MUX_M1
+			0x10C MUX_M1
+		>;
+	};
+	
+	dwmmc1_pmx_func: dwmmc1-pmx-func {
+        pinctrl-single,pins = <
+            0x098 MUX_M1
+            0x09C MUX_M1
+            0x0A0 MUX_M1
+            0x0A4 MUX_M1
+            0x0A8 MUX_M1
+            0x0AC MUX_M1
+        >;
+	};
+	
+	dwmmc2_pmx_func: dwmmc2-pmx-func {
+        pinctrl-single,pins = <
+            0x0E8 MUX_M1
+            0x0EC MUX_M1
+            0x0F0 MUX_M1
+            0x0F4 MUX_M1
+            0x0F8 MUX_M1
+            0x0FC MUX_M1
+        >;
+	};
+};
+
+&pmx1 {
+	i2c0_pmx_func: i2c0-pmx-func {
+        pinctrl-single,pins = <
+			0x014 MUX_M1
+			0x018 MUX_M1
+		>;
+	};
+
+	i2c2_pmx_func: i2c2-pmx-func {
+        pinctrl-single,pins = <
+			0x024 MUX_M1
+			0x028 MUX_M1
+		>;
+	};
+
+	uart2_pmx_func: uart2_pmx_func {
+        pinctrl-single,pins = <
+			0x034 MUX_M3
+			0x038 MUX_M3
+		>;
+	};
+};
+
+&pmx2 {
+	i2c3_cfg_func: i2c3-cfg-pins {
+        pinctrl-single,pins = <
+			0x024 0x0
+			0x028 0x0
+		>;
+        pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+        pinctrl-single,bias-pullup = <PULL_UP PULL_UP PULL_DIS PULL_UP>;
+        pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	i2c4_cfg_func: i2c4-cfg-pins {
+        pinctrl-single,pins = <
+			0x094 0x0
+			0x098 0x0
+		>;
+        pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+        pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
+        pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	
+	uart0_0_cfg_func: uart0_0_cfg_func {
+        pinctrl-single,pins = <0x084  0>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <1 1 0 1>;
+        pinctrl-single,drive-strength = <0x00 0x70>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	uart0_1_cfg_func: uart0_1_cfg_func {
+        pinctrl-single,pins = <0x088  0>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <0 1 0 1>;
+        pinctrl-single,drive-strength = <0x00 0x70>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart1_0_cfg_func: uart1_0_cfg_func {
+        pinctrl-single,pins = <
+			0x0E4  0
+			0x0E8  0
+			0x0F0  0
+		>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <0 1 0 1>;
+        pinctrl-single,drive-strength = <0x00 0x70>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	uart1_1_cfg_func: uart1_1_cfg_func {
+         pinctrl-single,pins = <0x0EC  0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <1 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart3_cfg_func: uart3-cfg-func {
+        pinctrl-single,pins = <
+			0x11C 0x0
+			0x120 0x0
+			0x124 0x0
+			0x128 0x0
+		>;
+        pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+        pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
+        pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart4_0_cfg_func: uart4_0_cfg_func {
+        pinctrl-single,pins = <0x12C  0 0x134  0>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <1 1 0 1>;
+        pinctrl-single,drive-strength = <0x00 0x70>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	uart4_1_cfg_func: uart4_1_cfg_func {
+        pinctrl-single,pins = <0x130  0 0x138  0>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <0 1 0 1>;
+        pinctrl-single,drive-strength = <0x00 0x70>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart6_0_cfg_func: uart6_0_cfg_func {
+        pinctrl-single,pins = <0x114  0>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <1 1 0 1>;
+        pinctrl-single,drive-strength = <0x00 0x70>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	uart6_1_cfg_func: uart6_1_cfg_func {
+        pinctrl-single,pins = <0x118  0>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <0 1 0 1>;
+        pinctrl-single,drive-strength = <0x00 0x70>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	dwmmc1_0_cfg_func: dwmmc1_0_cfg_func {
+        pinctrl-single,pins = <0x0A4  0>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <0 1 0 1>;
+        pinctrl-single,drive-strength = <0xA0 0xF0>;
+	};
+	dwmmc1_1_cfg_func: dwmmc1_1_cfg_func {
+        pinctrl-single,pins = <
+			0x0A8  0
+			0x0AC  0
+			0x0B0  0
+			0x0B4  0
+			0x0B8  0
+		>;
+        pinctrl-single,bias-pulldown = <0 2 0 2>;
+        pinctrl-single,bias-pullup = <1 1 0 1>;
+        pinctrl-single,drive-strength = <0x40 0xF0>;
+	};
+
+	dwmmc2_0_cfg_func: dwmmc2_0_cfg_func {
+	    pinctrl-single,pins = <0x0F4  0>;
+	    pinctrl-single,bias-pulldown = <0 2 0 2>;
+	    pinctrl-single,bias-pullup = <0 1 0 1>;
+	    pinctrl-single,drive-strength = <0x40 0x70>;
+	    pinctrl-single,slew-rate = <0x0 0x80>;
+    };
+    dwmmc2_1_cfg_func: dwmmc2_1_cfg_func {
+	    pinctrl-single,pins = <
+			0x0F8  0
+			0x0FC  0
+			0x100  0
+			0x104  0
+			0x108  0
+		>;
+	    pinctrl-single,bias-pulldown = <0 2 0 2>;
+	    pinctrl-single,bias-pullup = <1 1 0 1>;
+	    pinctrl-single,drive-strength = <0x20 0x70>;
+	    pinctrl-single,slew-rate = <0x0 0x80>;
+    };
+};
+
+&pmx3 {
+	i2c0_cfg_func: i2c0-cfg-pins {
+        pinctrl-single,pins = <
+			0x01C 0x0
+			0x020 0x0
+		>;
+        pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+        pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
+        pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	i2c2_cfg_func: i2c2-cfg-pins {
+        pinctrl-single,pins = <
+			0x02C 0x0
+			0x030 0x0
+		>;
+        pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
+        pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
+        pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+        pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	
+	uart2_0_cfg_func: uart2_0_cfg_func {
+         pinctrl-single,pins = <0x040  0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <1 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	uart2_1_cfg_func: uart2_1_cfg_func {
+         pinctrl-single,pins = <0x044  0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <0 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pmx_func &uart0_0_cfg_func &uart0_1_cfg_func>;
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart1_pmx_func &uart1_0_cfg_func &uart1_1_cfg_func>;
+};
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_pmx_func &uart2_0_cfg_func &uart2_1_cfg_func>;
+};
+
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart3_pmx_func &uart3_cfg_func>;
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pmx_func &uart4_0_cfg_func &uart4_1_cfg_func>;
+};
+
+&uart6 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart6_pmx_func &uart6_0_cfg_func &uart6_1_cfg_func>;
+};
+
+&dwmmc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dwmmc1_0_cfg_func &dwmmc1_1_cfg_func &dwmmc1_pmx_func>;
+};
+
+&dwmmc2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dwmmc2_pmx_func &dwmmc2_0_cfg_func &dwmmc2_1_cfg_func>;
+};

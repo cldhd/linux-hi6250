@@ -8,7 +8,7 @@
 /dts-v1/;
 
 #include "hi6250.dtsi"
-#include "hi6250-huawei-pins.dtsi"
+#include "hi6250-pinctrl.dtsi"
 
 / {
     model = "Huawei P Smart";
