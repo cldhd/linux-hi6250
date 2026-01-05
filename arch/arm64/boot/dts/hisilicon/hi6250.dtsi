@@ -1160,5 +1160,19 @@
 			dma-no-cci;
 			dma-type = "hi3660_dma";
 		};
+
+		usb3_otg_bc: usb3_otg_bc@ff200000 {
+			compatible = "hisilicon,hi3660-usb3-otg-bc", "syscon", "simple-mfd";
+			reg = <0x0 0xff200000 0x0 0x1000>;
+			status = "disable";
+
+			usb_phy: usb-phy {
+				compatible = "hisilicon,hi3660-usb-phy";
+				#phy-cells = <0>;
+				hisilicon,pericrg-syscon = <&crg_ctrl>;
+				hisilicon,pctrl-syscon = <&pmu_ctrl>;
+				hisilicon,eye-diagram-param = <0x059066DB>;
+			};
+		};
 	};
 };

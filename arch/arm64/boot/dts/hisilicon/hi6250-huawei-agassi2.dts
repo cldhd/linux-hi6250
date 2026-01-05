@@ -182,3 +182,10 @@
 	pmic-gpios = <&gpio23 7 GPIO_ACTIVE_HIGH>;
 };
 
+&usb3_otg_bc {
+	status = "ok";
+};
+
+&usb_phy {
+	hisilicon,eye-diagram-param = <0x059066DB>;
+};
