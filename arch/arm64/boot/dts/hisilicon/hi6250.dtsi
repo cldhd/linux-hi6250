@@ -395,6 +395,113 @@
 			hisi,rst-syscon = <&crg_ctrl>;
 			#reset-cells = <2>;
 		};
+		
+		sys_rst: sys_rst_controller {
+			compatible = "hisilicon,hi3660-reset";
+			hisi,rst-syscon = <&sys_ctrl>;
+			#reset-cells = <2>;
+		};
+		
+		uart0: serial@fdf02000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xfdf02000 0x0 0x1000>;
+			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+			dma-names = "rx", "tx";
+			dmas = <&dma0 0 &dma0 1>;
+			clocks = <&crg_ctrl HI6250_CLK_UART0_FAC>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "clk_uart0_fac", "apb_pclk";
+			resets = <&crg_rst 0x78 10>; // TODO: review
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart0_pmx_func &uart0_cfg_func>;
+			status = "disabled";
+		};
+
+		uart1: serial@fdf00000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xfdf00000 0x0 0x1000>;
+			interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
+			dma-names = "rx", "tx";
+			dmas = <&dma0 2 &dma0 3>;
+			clocks = <&crg_ctrl HI6250_CLK_UART1>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "clk_uart1", "apb_pclk";
+			resets = <&crg_rst 0x78 11>; // TODO: review
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart1_pmx_func &uart1_cfg_func>;
+			status = "disabled";
+		};
+
+		uart2: serial@fdf03000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xfdf03000 0x0 0x1000>;
+			interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
+			dma-names = "rx", "tx";
+			dmas = <&dma0 4 &dma0 5>;
+			clocks = <&crg_ctrl HI6250_CLK_UART2>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "clk_uart2", "apb_pclk";
+			resets = <&crg_rst 0x78 12>; // TODO: review
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart2_pmx_func &uart2_cfg_func>;
+			status = "disabled";
+		};
+
+		uart3: serial@ffd74000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xffd74000 0x0 0x1000>;
+			interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
+			dma-names = "rx", "tx";
+			dmas = <&iomcu_dma 8 &iomcu_dma 9>;
+			clocks = <&crg_ctrl HI6250_CLK_UART3>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "ao_ctrl", "apb_pclk";
+			resets = <&iomcu_rst 0x20 11>; // TODO: review
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart3_pmx_func &uart3_cfg_func>;
+			status = "disabled";
+		};
+
+		uart4: serial@fdf01000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xfdf01000 0x0 0x1000>;
+			interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
+			dma-names = "rx", "tx";
+			dmas = <&dma0 6 &dma0 7>;
+			clocks = <&crg_ctrl HI6250_CLK_UART4>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "clk_uart4", "apb_pclk";
+			resets = <&crg_rst 0x78 14>; // TODO: review
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart4_pmx_func &uart4_cfg_func>;
+			status = "disabled";
+		};
+
+		uart5: serial@fdf05000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xfdf05000 0x0 0x1000>;
+			interrupts = <GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH>;
+			dma-names = "rx", "tx";
+			dmas = <&dma0 8 &dma0 9>;
+			clocks = <&crg_ctrl HI6250_CLK_UART5>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "clk_uart5", "apb_pclk";
+			resets = <&crg_rst 0x78 15>; // TODO: review
+			status = "disabled";
+		};
+
+		uart6: serial@fff32000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xfff32000 0x0 0x1000>;
+			interrupts = <GIC_SPI 79 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI6250_UART6CLK>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "uart6clk", "apb_pclk";
+			resets = <&sys_rst 0x504 9>; // TODO: review
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart6_pmx_func &uart6_cfg_func>;
+			status = "disabled";
+		};
 
 		range: gpio-range {
 			#pinctrl-single,gpio-range-cells = <3>;
@@ -1026,6 +1133,34 @@
 					regulator-enable-ramp-delay = <120>;
 				};
 			};
+		};
+
+		dma0: dma@fdf30000 {
+			compatible = "hisilicon,k3-dma-1.0";
+			reg = <0x0 0xfdf30000 0x0 0x1000>;
+			status = "disable";
+			#dma-cells = <1>;
+			dma-channels = <16>;
+			dma-requests = <32>;
+			dma-channel-mask = <0xfffe>;
+			interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI6250_CLK_DMAC> <&ao_ctrl HI6250_APB_PCLK>;
+			dma-no-cci;
+			dma-type = "hi3660_dma";
+		};
+		
+		iomcu_dma: dma@ffd77000 {
+			compatible = "hisilicon,k3-dma-1.0";
+			reg = <0x0 0xffd77000 0x0 0x1000>;
+			status = "disable";
+			#dma-cells = <1>;
+			dma-channels = <8>;
+			dma-requests = <32>;
+			dma-channel-mask = <0xf0>;
+			interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI6250_CLK_DMA_IOMCU> <&ao_ctrl HI6250_APB_PCLK>;
+			dma-no-cci;
+			dma-type = "hi3660_dma";
 		};
 	};
 };

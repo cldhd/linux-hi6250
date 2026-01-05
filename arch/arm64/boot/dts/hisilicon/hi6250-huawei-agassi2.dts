@@ -137,7 +137,48 @@
 	};
 };
 
+&pmx0 {
+	status = "ok";
+};
+
+&pmx1 {
+	status = "ok";
+};
+
+&pmx2 {
+	status = "ok";
+};
+
+&pmx3 {
+	status = "ok";
+};
+
+&i2c0 {
+	status = "ok";
+};
+
+&i2c2 {
+	status = "ok";
+};
+
+&i2c3 {
+	status = "ok";
+};
+
+&i2c4 {
+	status = "ok";
+};
+
+&dma0 {
+	status = "ok";
+};
+
+&uart0 {
+	status = "ok";
+};
+
 &pmic {
 	status = "ok";
 	gpios = <&gpio23 7 GPIO_ACTIVE_HIGH>;
 };
+

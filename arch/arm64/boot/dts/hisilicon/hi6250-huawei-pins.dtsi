@@ -3,89 +3,129 @@
 #include <dt-bindings/pinctrl/hisi.h>
 
 &pmx0 {
-	status = "ok";
-
-	/* i2c3 */
 	i2c3_pmx_func: i2c3-pmx-func {
-        pinctrl-single,pins = <0x018 MUX_M0>, <0x01C MUX_M0>;
+        pinctrl-single,pins = <0x018 MUX_M0> <0x01C MUX_M0>;
 	};
 
-	/* i2c4 */
 	i2c4_pmx_func: i2c4-pmx-func {
-        pinctrl-single,pins = <0x088 MUX_M1>, <0x08C MUX_M1>;
+        pinctrl-single,pins = <0x088 MUX_M1> <0x08C MUX_M1>;
+	};
+
+	uart0_pmx_func: uart0-pmx-func {
+		pinctrl-single,pins = <0x078 0x1> <0x07C 0x1>;
+	};
+	
+	uart1_pmx_func: uart1-pmx-func {
+         pinctrl-single,pins = <0x0D8 0x0> <0x0DC 0x0> <0x0E0 0x1> <0x0E4 0x1>;
+	};
+
+	uart3_pmx_func: uart3-pmx-func {
+         pinctrl-single,pins = <0x110 0x1> <0x114 0x1> <0x118 0x1> <0x11C 0x1>;
+	};
+
+	uart4_pmx_func: uart4-pmx-func {
+         pinctrl-single,pins = <0x120 0x1> <0x124 0x1> <0x128 0x1> <0x12C 0x1>;
+	};
+	
+	uart6_pmx_func: uart6-pmx-func {
+         pinctrl-single,pins = <0x108 0x1> <0x10C 0x1>;
 	};
 };
 
 &pmx1 {
-	status = "ok";
-
-	/* i2c0 */
 	i2c0_pmx_func: i2c0-pmx-func {
-        pinctrl-single,pins = <0x014 MUX_M1>, <0x018 MUX_M1>;
+        pinctrl-single,pins = <0x014 MUX_M1> <0x018 MUX_M1>;
 	};
 
-	/* i2c2 */
 	i2c2_pmx_func: i2c2-pmx-func {
-        pinctrl-single,pins = <0x024 MUX_M1>, <0x028 MUX_M1>;
+        pinctrl-single,pins = <0x024 MUX_M1> <0x028 MUX_M1>;
+	};
+
+	uart2_pmx_func: uart2_pmx_func {
+         pinctrl-single,pins = <0x034 0x3> <0x038 0x3>;
 	};
 };
 
 &pmx2 {
-	status = "ok";
-
-	/* i2c3 */
 	i2c3_cfg_func: i2c3-cfg-pins {
-        pinctrl-single,pins = <0x024 0x0>, <0x028 0x0>;
+        pinctrl-single,pins = <0x024 0x0> <0x028 0x0>;
         pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
         pinctrl-single,bias-pullup = <PULL_UP PULL_UP PULL_DIS PULL_UP>;
         pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
         pinctrl-single,slew-rate = <0x0 0x80>;
 	};
 
-	/* i2c4 */
 	i2c4_cfg_func: i2c4-cfg-pins {
-         pinctrl-single,pins = <0x094 0x0>, <0x098 0x0>;
+         pinctrl-single,pins = <0x094 0x0> <0x098 0x0>;
          pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
          pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
          pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+	
+	uart0_cfg_func: uart0-cfg-func {
+         pinctrl-single,pins = <0x088 0x0> <0x084 0x0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <0 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart1_cfg_func: uart1-cfg-func {
+         pinctrl-single,pins = <0x0E4 0x0> <0x0E8 0x0> <0x0EC 0x0> <0x0F0 0x0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <0 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart3_cfg_func: uart3-cfg-func {
+         pinctrl-single,pins = <0x11C 0x0> <0x120 0x0> <0x124 0x0> <0x128 0x0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <0 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart4_cfg_func: uart4-cfg-func {
+         pinctrl-single,pins = <0x12C 0x0> <0x130 0x0> <0x134 0x0> <0x138 0x0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <1 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
+
+	uart6_cfg_func: uart6-cfg-func {
+         pinctrl-single,pins = <0x114 0x0> <0x118 0x0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <1 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
          pinctrl-single,slew-rate = <0x0 0x80>;
 	};
 };
 
 &pmx3 {
-	status = "ok";
-	
-	/* i2c0 */
 	i2c0_cfg_func: i2c0-cfg-pins {
-         pinctrl-single,pins = <0x01C 0x0>, <0x020 0x0>;
+         pinctrl-single,pins = <0x01C 0x0> <0x020 0x0>;
          pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
          pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
          pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
          pinctrl-single,slew-rate = <0x0 0x80>;
 	};
 
-	/* i2c2 */
 	i2c2_cfg_func: i2c2-cfg-pins {
-        pinctrl-single,pins = <0x02C 0x0>, <0x030 0x0>;
+        pinctrl-single,pins = <0x02C 0x0> <0x030 0x0>;
         pinctrl-single,bias-pulldown = <PULL_DIS PULL_DOWN PULL_DIS PULL_DOWN>;
         pinctrl-single,bias-pullup = <PULL_DIS PULL_UP PULL_DIS PULL_UP>;
         pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
         pinctrl-single,slew-rate = <0x0 0x80>;
 	};
-};
-
-&i2c0 {
-	status = "ok";
-};
-
-&i2c2 {
-	status = "ok";
-};
-
-&i2c3 {
-	status = "ok";
-};
-
-&i2c4 {
-	status = "ok";
+	
+	uart2_cfg_func: uart2-cfg-func {
+         pinctrl-single,pins = <0x040 0x0> <0x044 0x0>;
+         pinctrl-single,bias-pulldown = <0 2 0 2>;
+         pinctrl-single,bias-pullup = <1 1 0 1>;
+         pinctrl-single,drive-strength = <0x00 0x70>;
+         pinctrl-single,slew-rate = <0x0 0x80>;
+	};
 };
