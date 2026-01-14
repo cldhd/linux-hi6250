@@ -2,7 +2,7 @@
 /*
  * Hi6250 stub clock driver
  *
- * Copyright (C) 2025, Tildeguy (tildeguy@proton.me)
+ * Copyright (C) 2025, Tildeguy (tildeguy@mainlining.org)
  */
 
 #include <linux/clk-provider.h>

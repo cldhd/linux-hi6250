@@ -9,8 +9,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 
-#include "hi6250.dtsi"
-#include "hi6250-pinctrl.dtsi"
+#include "hi6250-minimal.dtsi"
 
 / {
 	model = "Huawei Mediapad T5";
@@ -18,7 +17,7 @@
 	chassis-type = "handset";
 
 	aliases {
-
+		
 	};
 
 	chosen {
@@ -61,10 +60,6 @@
 
 		bbox-mem@34000000 {
 			reg = <0x0 0x34000000 0x0 0x800000>;
-		};
-
-		pstore-mem@34800000 {
-			reg = <0x0 0x34800000 0x0 0x100000>;
 		};
 
 		lpmx-core@34900000 {
@@ -130,80 +125,34 @@
 			reg = <0x0 0x3ec00000 0x0 0x500000>;
 			no-map;
 		};
+
+		modem_socp@3f100000 {
+			reg = <0x0 0x3f100000 0x0 0x1000000>;
+			no-map;
+		};
+
+		modem_log@40500000 {
+			reg = <0x0 0x40500000 0x0 0x3200000>;
+			no-map;
+		};
+
+		xmode_data@43700000 {
+			reg = <0x0 0x43700000 0x0 0x18900000>;
+			no-map;
+		};
+
+		cma@5c000000 {
+			reg = <0x0 0x5c000000 0x0 0x1000000>;
+			no-map;
+		};
+
+		ramoops@34800000 {
+			compatible = "ramoops";
+			reg = <0x0 0x34800000 0x0 0x100000>;
+			record-size = <0x20000>;
+			pmsg-size = <0x20000>;
+			console-size = <0x80000>;
+			ftrace-size = <0x00000>;
+		};  
 	};
-
-	soc {
-
-	};
-};
-
-/* enable pinmux */
-&pmx0 {
-	status = "ok";
-};
-
-&pmx1 {
-	status = "ok";
-};
-
-&pmx2 {
-	status = "ok";
-};
-
-&pmx3 {
-	status = "ok";
-};
-
-/* enable i2c2,4 */
-&i2c2 {
-	status = "ok";
-};
-
-&i2c4 {
-	status = "ok";
-};
-
-/* enable dma */
-&dma0 {
-	status = "ok";
-};
-
-&iomcu_dma {
-	status = "ok";
-};
-
-/* enable uart0,2,3,4,6 */
-&uart0 {
-	status = "ok";
-};
-
-&uart2 {
-	status = "ok";
-};
-
-&uart3 {
-	status = "ok";
-};
-
-&uart4 {
-	status = "ok";
-};
-
-&uart6 {
-	status = "ok";
-};
-
-/* enable pmic */
-&pmic {
-	status = "ok";
-	pmic-gpios = <&gpio23 7 GPIO_ACTIVE_HIGH>;
-};
-
-/* enable usb */
-&usb3_otg_bc {
-	status = "ok";
-};
-
-&usb_phy {
-	hisilicon,eye-diagram-param = <0x059066DB>;
 };

@@ -2,7 +2,7 @@
 /*
  * Clock IDs for Hi6250
  * 
- * Copyright (C) 2025, Tildeguy (tildeguy@proton.me)
+ * Copyright (C) 2025, Tildeguy (tildeguy@mainlining.org)
  */
 
 #ifndef __DT_BINDINGS_CLOCK_HI6250_H

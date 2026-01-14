@@ -2,7 +2,7 @@
 /*
  * Device tree of Hisilicon Hi6250 SoC
  *
- * Copyright (C) 2025, Tildeguy (tildeguy@proton.me)
+ * Copyright (C) 2025, Tildeguy (tildeguy@mainlining.org)
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -41,9 +41,9 @@
 		compatible = "arm,armv8-timer";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
-			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
-			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
-			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
+				 <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+				 <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+				 <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
 		clock-frequency = <0x1d4c00>;
 	};
 
@@ -365,8 +365,8 @@
 		};
 		
 		iomcu_ctrl: syscon@ffd7e000 {
-		    compatible = "syscon";
-		    reg = <0x0 0xffd7e000 0x0 0x1000>;
+			compatible = "syscon";
+			reg = <0x0 0xffd7e000 0x0 0x1000>;
 		};
 		
 		stub_clock: stub_clock {
@@ -997,8 +997,8 @@
 			
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 258 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 259 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 260 IRQ_TYPE_LEVEL_HIGH>;
+					 <GIC_SPI 259 IRQ_TYPE_LEVEL_HIGH>,
+					 <GIC_SPI 260 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "JOB", "MMU", "GPU";
 
 			clocks = <&stub_clock HI6250_CLK_STUB_GPU>;
