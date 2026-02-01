@@ -43,7 +43,7 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 
-	  	ramoops@34800000 {
+		ramoops@34800000 {
 			compatible = "ramoops";
 			reg = <0x0 0x34800000 0x0 0x100000>;
 			record-size = <0x20000>;
@@ -54,6 +54,6 @@
 	};
 
 	soc {
-		
+
 	};
 };
