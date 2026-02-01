@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Device tree for Huawei Mediapad T5
+ * Minimal device tree for Huawei P Smart
  *
  * Copyright (C) 2025, Tildeguy (tildeguy@mainlining.org)
  */
@@ -10,7 +10,7 @@
 #include "hi6250-minimal.dtsi"
 
 / {
-	model = "Huawei Mediapad T5";
-	compatible = "huawei,agassi2", "hisilicon,hi6250";
+	model = "Huawei P Smart";
+	compatible = "huawei,figo", "hisilicon,hi6250";
 	chassis-type = "handset";
 };
