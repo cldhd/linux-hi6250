@@ -16,7 +16,7 @@
 	#size-cells = <2>;
 
 	psci {
-		compatible = "arm,psci";
+		compatible = "arm,psci-0.2";
 		method = "smc";
 		cpu_off = <0x84000002>;
 		system_off = <0x84000008>;
