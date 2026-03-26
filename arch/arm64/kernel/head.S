@@ -120,6 +120,24 @@ SYM_CODE_START(primary_entry)
 	bl	init_kernel_el			// w0=cpu_boot_mode
 	mov	x20, x0
 
+#ifdef CONFIG_ARM64_APPENDED_DTB
+	ldr	x3, =_end
+	ldr     x1, =0x00480000
+	ldr	x2, =_text
+	sub     x3, x3, x2
+	add	x3, x3, x1
+	ldr	w0, [x3]
+#ifndef __AARCH64EB__
+	ldr	w1, =0xedfe0dd0		// FDT magic word
+#else
+	ldr	w1, =0xd00dfeed
+#endif
+	cmp	w0, w1
+	b.ne	2f			// FDT found
+	mov	x21, x3
+2:
+#endif
+
 	/*
 	 * The following calls CPU setup code, see arch/arm64/mm/proc.S for
 	 * details.
@@ -163,6 +181,13 @@ CPU_BE( tbz	x19, #SCTLR_ELx_EE_SHIFT, 1f	)
 	mov	x19, xzr
 	ret
 SYM_CODE_END(record_mmu_state)
+
+SYM_CODE_START_LOCAL(debug_stuff)
+	movz    x9, #0x5000
+  	movk    x9, #0x5d46, lsl #16
+  	mov     w10, #-1
+  	str     w10, [x9]
+SYM_CODE_END(debug_stuff)
 
 /*
  * Preserve the arguments passed by the bootloader in x0 .. x3
@@ -468,7 +493,8 @@ SYM_FUNC_START(__enable_mmu)
 	load_ttbr1 x1, x1, x3
 
 	set_sctlr_el1	x0
-
+	bl debug_stuff
+	
 	ret
 SYM_FUNC_END(__enable_mmu)
 
