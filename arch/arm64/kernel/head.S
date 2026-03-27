@@ -492,6 +492,7 @@ SYM_FUNC_START(__enable_mmu)
 	msr	ttbr0_el1, x2			// load TTBR0
 	load_ttbr1 x1, x1, x3
 
+	// bl debug_stuff
 	set_sctlr_el1	x0
 	bl debug_stuff
 	

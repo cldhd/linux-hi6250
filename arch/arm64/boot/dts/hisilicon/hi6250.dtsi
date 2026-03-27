@@ -139,7 +139,7 @@
 			reg = <0x0 0x0>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER0_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
 			operating-points-v2 = <&cpu_opp_table_0>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -152,7 +152,7 @@
 			reg = <0x0 0x1>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER0_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
 			operating-points-v2 = <&cpu_opp_table_0>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -165,7 +165,7 @@
 			reg = <0x0 0x2>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER0_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
 			operating-points-v2 = <&cpu_opp_table_0>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -178,7 +178,7 @@
 			reg = <0x0 0x3>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER0_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER0>;
 			operating-points-v2 = <&cpu_opp_table_0>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -191,7 +191,7 @@
 			reg = <0x0 0x100>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER1_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
 			operating-points-v2 = <&cpu_opp_table_1>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_1>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -204,7 +204,7 @@
 			reg = <0x0 0x101>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER1_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
 			operating-points-v2 = <&cpu_opp_table_1>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_1>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -217,7 +217,7 @@
 			reg = <0x0 0x102>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER1_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
 			operating-points-v2 = <&cpu_opp_table_1>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_1>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -230,7 +230,7 @@
 			reg = <0x0 0x103>;
 			enable-method = "psci";
 			next-level-cache = <&CLUSTER1_L2>;
-			clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
+			// clocks = <&stub_clock HI6250_CLK_STUB_CLUSTER1>;
 			operating-points-v2 = <&cpu_opp_table_1>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_1>;
 			#cooling-cells = <3>; /* min followed by max */
@@ -329,6 +329,30 @@
 		#size-cells = <2>;
 		ranges;
 		
+		osc32k: osc32khz {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-output-names = "osc32khz";
+		};
+	
+		pclk: apb_pclk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <20000000>;
+			clock-output-names = "apb_pclk";
+		};
+		
+		dual_timer: timer@fff14000 {
+			compatible = "arm,sp804";
+			reg = <0x0 0xfff14000 0x0 0x1000>;
+			interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&osc32k &osc32k &pclk>;
+			clock-names = "osc32khz", "osc32khz", "apb_pclk";
+		};
+
+		/*
 		dual_timer: timer@fff14000 {
 			compatible = "arm,sp804";
 			reg = <0x0 0xfff14000 0x0 0x1000>;
@@ -1163,7 +1187,7 @@
 			};
 		};
 
-		/* SD */
+		// SD
 		dwmmc1: dwmmc1@ff37f000 {
 			compatible = "hisilicon,hi3660-dw-mshc";
 			reg = <0x0 0xff37f000 0x0 0x1000>;
@@ -1181,7 +1205,7 @@
 			status = "disable";
 		};
 
-		/* SDIO */
+		// SDIO
 		dwmmc2: dwmmc2@ff37d000 {
 			compatible = "hisilicon,hi3660-dw-mshc";
 			reg = <0x0 0xff37d000 0x0 0x1000>;
@@ -1193,5 +1217,6 @@
 			card-detect-delay = <200>;
 			status = "disable";
 		};
+		*/
 	};
 };
