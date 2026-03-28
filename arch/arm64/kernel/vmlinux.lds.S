@@ -191,6 +191,7 @@ SECTIONS
 
 	.head.text : {
 		_text = .;
+    		__PHYS_OFFSET = _text - 0x80000;
 		HEAD_TEXT
 	}
 	.text : ALIGN(SEGMENT_ALIGN) {	/* Real text segment		*/
