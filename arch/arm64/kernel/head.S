@@ -35,8 +35,6 @@
 #include <asm/stacktrace/frame.h>
 #include <asm/thread_info.h>
 #include <asm/virt.h>
-#include <asm/pgtable.h>
-#include <asm/sparsemem.h>
 
 #include "efi-header.S"
 
@@ -44,71 +42,6 @@
 #error PAGE_OFFSET must be at least 2MB aligned
 #endif
 
-#define SWAPPER_PGTABLE_LEVELS	(CONFIG_PGTABLE_LEVELS)
-#define SWAPPER_PTE_FLAGS	(PTE_TYPE_PAGE | PTE_AF | PTE_SHARED)
-#define SWAPPER_MM_MMUFLAGS	(PTE_ATTRINDX(MT_NORMAL) | SWAPPER_PTE_FLAGS)
-#define IDMAP_PGTABLE_LEVELS	(ARM64_HW_PGTABLE_LEVELS(PHYS_MASK_SHIFT))
-#define SWAPPER_DIR_SIZE	(SWAPPER_PGTABLE_LEVELS * PAGE_SIZE)
-#define IDMAP_DIR_SIZE		(IDMAP_PGTABLE_LEVELS * PAGE_SIZE)
-#define SWAPPER_BLOCK_SHIFT	PAGE_SHIFT
-#define SWAPPER_BLOCK_SIZE	PAGE_SIZE
-#define SWAPPER_TABLE_SHIFT	PMD_SHIFT
-
-#define ICC_EOIR1_EL1			sys_reg(3, 0, 12, 12, 1)
-#define ICC_DIR_EL1			sys_reg(3, 0, 12, 11, 1)
-#define ICC_IAR1_EL1			sys_reg(3, 0, 12, 12, 0)
-#define ICC_SGI1R_EL1			sys_reg(3, 0, 12, 11, 5)
-#define ICC_PMR_EL1			sys_reg(3, 0, 4, 6, 0)
-#define ICC_CTLR_EL1			sys_reg(3, 0, 12, 12, 4)
-#define ICC_SRE_EL1			sys_reg(3, 0, 12, 12, 5)
-#define ICC_GRPEN1_EL1			sys_reg(3, 0, 12, 12, 7)
-
-#define ICC_SRE_EL2			sys_reg(3, 4, 12, 9, 5)
-
-/*
- * System register definitions
- */
-#define ICH_VSEIR_EL2			sys_reg(3, 4, 12, 9, 4)
-#define ICH_HCR_EL2			sys_reg(3, 4, 12, 11, 0)
-#define ICH_VTR_EL2			sys_reg(3, 4, 12, 11, 1)
-#define ICH_MISR_EL2			sys_reg(3, 4, 12, 11, 2)
-#define ICH_EISR_EL2			sys_reg(3, 4, 12, 11, 3)
-#define ICH_ELSR_EL2			sys_reg(3, 4, 12, 11, 5)
-#define ICH_VMCR_EL2			sys_reg(3, 4, 12, 11, 7)
-
-#define __LR0_EL2(x)			sys_reg(3, 4, 12, 12, x)
-#define __LR8_EL2(x)			sys_reg(3, 4, 12, 13, x)
-
-#define ICH_LR0_EL2			__LR0_EL2(0)
-#define ICH_LR1_EL2			__LR0_EL2(1)
-#define ICH_LR2_EL2			__LR0_EL2(2)
-#define ICH_LR3_EL2			__LR0_EL2(3)
-#define ICH_LR4_EL2			__LR0_EL2(4)
-#define ICH_LR5_EL2			__LR0_EL2(5)
-#define ICH_LR6_EL2			__LR0_EL2(6)
-#define ICH_LR7_EL2			__LR0_EL2(7)
-#define ICH_LR8_EL2			__LR8_EL2(0)
-#define ICH_LR9_EL2			__LR8_EL2(1)
-#define ICH_LR10_EL2			__LR8_EL2(2)
-#define ICH_LR11_EL2			__LR8_EL2(3)
-#define ICH_LR12_EL2			__LR8_EL2(4)
-#define ICH_LR13_EL2			__LR8_EL2(5)
-#define ICH_LR14_EL2			__LR8_EL2(6)
-#define ICH_LR15_EL2			__LR8_EL2(7)
-
-#define __AP0Rx_EL2(x)			sys_reg(3, 4, 12, 8, x)
-#define ICH_AP0R0_EL2			__AP0Rx_EL2(0)
-#define ICH_AP0R1_EL2			__AP0Rx_EL2(1)
-#define ICH_AP0R2_EL2			__AP0Rx_EL2(2)
-#define ICH_AP0R3_EL2			__AP0Rx_EL2(3)
-
-#define __AP1Rx_EL2(x)			sys_reg(3, 4, 12, 9, x)
-#define ICH_AP1R0_EL2			__AP1Rx_EL2(0)
-#define ICH_AP1R1_EL2			__AP1Rx_EL2(1)
-#define ICH_AP1R2_EL2			__AP1Rx_EL2(2)
-#define ICH_AP1R3_EL2			__AP1Rx_EL2(3)
-
-#define TEXT_OFFSET 0x80000
 /*
  * Kernel startup entry point.
  * ---------------------------
@@ -128,7 +61,6 @@
 	efi_signature_nop			// special NOP to identity as PE/COFF executable
 	b	primary_entry			// branch to kernel start, magic
 	.quad	0				// Image load offset from start of RAM, little-endian
-	.quad 0x00080000 // Image load offset from start of RAM, little-endian
 	le64sym	_kernel_size_le			// Effective size of kernel image, little-endian
 	le64sym	_kernel_flags_le		// Informative flags, little-endian
 	.quad	0				// reserved
@@ -150,280 +82,87 @@
 	 *  x20        primary_entry() .. __primary_switch()    CPU boot mode
 	 *  x21        primary_entry() .. start_kernel()        FDT pointer passed at boot in x0
 	 */
-	__INIT
 SYM_CODE_START(primary_entry)
-	bl preserve_boot_args
-	bl el2_setup
-	adrp x24, __PHYS_OFFSET
-	and x23, x24, MIN_KIMG_ALIGN - 1	// KASLR offset, defaults to 0
-	bl set_cpu_boot_mode_flag
-	bl __create_page_tables
+	bl	record_mmu_state
+	bl	preserve_boot_args
+
+	adrp	x1, early_init_stack
+	mov	sp, x1
+	mov	x29, xzr
+	adrp	x0, __pi_init_idmap_pg_dir
+	mov	x1, xzr
+	bl	__pi_create_init_idmap
+
+	/*
+	 * If the page tables have been populated with non-cacheable
+	 * accesses (MMU disabled), invalidate those tables again to
+	 * remove any speculatively loaded cache lines.
+	 */
+	cbnz	x19, 0f
+	dmb     sy
+	mov	x1, x0				// end of used region
+	adrp    x0, __pi_init_idmap_pg_dir
+	adr_l	x2, dcache_inval_poc
+	blr	x2
+	b	1f
+
+	/*
+	 * If we entered with the MMU and caches on, clean the ID mapped part
+	 * of the primary boot code to the PoC so we can safely execute it with
+	 * the MMU off.
+	 */
+0:	adrp	x0, __idmap_text_start
+	adr_l	x1, __idmap_text_end
+	adr_l	x2, dcache_clean_poc
+	blr	x2
+
+1:	mov	x0, x19
+	bl	init_kernel_el			// w0=cpu_boot_mode
+	mov	x20, x0
+
 	/*
 	 * The following calls CPU setup code, see arch/arm64/mm/proc.S for
 	 * details.
 	 * On return, the CPU will be ready for the MMU to be turned on and
 	 * the TCR will have been set.
 	 */
-	bl __cpu_setup			// initialise processor
-	bl	__enable_mmu
+	bl	__cpu_setup			// initialise processor
 	b	__primary_switch
 SYM_CODE_END(primary_entry)
-/*
- * Macro to create a table entry to the next page.
- *
- *	tbl:	page table address
- *	virt:	virtual address
- *	shift:	#imm page table shift
- *	ptrs:	#imm pointers per table page
- *
- * Preserves:	virt
- * Corrupts:	tmp1, tmp2
- * Returns:	tbl -> next level table page address
- */
-	.macro	create_table_entry, tbl, virt, shift, ptrs, tmp1, tmp2
-	lsr	\tmp1, \virt, #\shift
-	and	\tmp1, \tmp1, #\ptrs - 1	// table index
-	add	\tmp2, \tbl, #PAGE_SIZE
-	orr	\tmp2, \tmp2, #PMD_TYPE_TABLE	// address of next table and entry type
-	str	\tmp2, [\tbl, \tmp1, lsl #3]
-	add	\tbl, \tbl, #PAGE_SIZE		// next level table page
-	.endm
 
-/*
- * Macro to populate the PGD (and possibily PUD) for the corresponding
- * block entry in the next level (tbl) for the given virtual address.
- *
- * Preserves:	tbl, next, virt
- * Corrupts:	tmp1, tmp2
- */
-	.macro	create_pgd_entry, tbl, virt, tmp1, tmp2
-	create_table_entry \tbl, \virt, PGDIR_SHIFT, PTRS_PER_PGD, \tmp1, \tmp2
-#if SWAPPER_PGTABLE_LEVELS > 3
-	create_table_entry \tbl, \virt, PUD_SHIFT, PTRS_PER_PUD, \tmp1, \tmp2
-#endif
-#if SWAPPER_PGTABLE_LEVELS > 2
-	create_table_entry \tbl, \virt, SWAPPER_TABLE_SHIFT, PTRS_PER_PTE, \tmp1, \tmp2
-#endif
-	.endm
-
-/*
- * Macro to populate block entries in the page table for the start..end
- * virtual range (inclusive).
- *
- * Preserves:	tbl, flags
- * Corrupts:	phys, start, end, pstate
- */
-	.macro	create_block_map, tbl, flags, phys, start, end
-	lsr	\phys, \phys, #SWAPPER_BLOCK_SHIFT
-	lsr	\start, \start, #SWAPPER_BLOCK_SHIFT
-	and	\start, \start, #PTRS_PER_PTE - 1	// table index
-	orr	\phys, \flags, \phys, lsl #SWAPPER_BLOCK_SHIFT	// table entry
-	lsr	\end, \end, #SWAPPER_BLOCK_SHIFT
-	and	\end, \end, #PTRS_PER_PTE - 1		// table end index
-9999:	str	\phys, [\tbl, \start, lsl #3]		// store the entry
-	add	\start, \start, #1			// next entry
-	add	\phys, \phys, #SWAPPER_BLOCK_SIZE		// next block
-	cmp	\start, \end
-	b.ls	9999b
-	.endm
-
-
-SYM_CODE_START_LOCAL(__create_page_tables)
-	adrp	x25, idmap_pg_dir
-	adrp	x26, swapper_pg_dir
-	mov	x28, lr
-
-	/*
-	 * Invalidate the idmap and swapper page tables to avoid potential
-	 * dirty cache lines being evicted.
-	 */
-	mov	x0, x25
-	add	x1, x26, #SWAPPER_DIR_SIZE
-	bl	__inval_cache_range
-
-	/*
-	 * Clear the idmap and swapper page tables.
-	 */
-	mov	x0, x25
-	add	x6, x26, #SWAPPER_DIR_SIZE
-1:	stp	xzr, xzr, [x0], #16
-	stp	xzr, xzr, [x0], #16
-	stp	xzr, xzr, [x0], #16
-	stp	xzr, xzr, [x0], #16
-	cmp	x0, x6
-	b.lo	1b
-
-	mov	x7, SWAPPER_MM_MMUFLAGS
-
-	/*
-	 * Create the identity mapping.
-	 */
-	mov	x0, x25				// idmap_pg_dir
-	adrp	x3, __idmap_text_start		// __pa(__idmap_text_start)
-
-#ifndef CONFIG_ARM64_VA_BITS_48
-#define EXTRA_SHIFT	(PGDIR_SHIFT + PAGE_SHIFT - 3)
-#define EXTRA_PTRS	(1 << (48 - EXTRA_SHIFT))
-
-	/*
-	 * If VA_BITS < 48, it may be too small to allow for an ID mapping to be
-	 * created that covers system RAM if that is located sufficiently high
-	 * in the physical address space. So for the ID map, use an extended
-	 * virtual range in that case, by configuring an additional translation
-	 * level.
-	 * First, we have to verify our assumption that the current value of
-	 * VA_BITS was chosen such that all translation levels are fully
-	 * utilised, and that lowering T0SZ will always result in an additional
-	 * translation level to be configured.
-	 */
-#if VA_BITS != EXTRA_SHIFT
-#error "Mismatch between VA_BITS and page size/number of translation levels"
-#endif
-
-	/*
-	 * Calculate the maximum allowed value for TCR_EL1.T0SZ so that the
-	 * entire ID map region can be mapped. As T0SZ == (64 - #bits used),
-	 * this number conveniently equals the number of leading zeroes in
-	 * the physical address of __idmap_text_end.
-	 */
-	adrp	x5, __idmap_text_end
-	clz	x5, x5
-	cmp	x5, TCR_T0SZ(VA_BITS)	// default T0SZ small enough?
-	b.ge	1f			// .. then skip additional level
-
-	adr_l	x6, idmap_t0sz
-	str	x5, [x6]
-	dmb	sy
-	dc	ivac, x6		// Invalidate potentially stale cache line
-
-	create_table_entry x0, x3, EXTRA_SHIFT, EXTRA_PTRS, x5, x6
-1:
-#endif
-
-	create_pgd_entry x0, x3, x5, x6
-	mov	x5, x3				// __pa(__idmap_text_start)
-	adr_l	x6, __idmap_text_end		// __pa(__idmap_text_end)
-	create_block_map x0, x7, x3, x5, x6
-
-	/*
-	 * Map the kernel image (starting with PHYS_OFFSET).
-	 */
-	mov	x0, x26				// swapper_pg_dir
-	mov_q	x5, KIMAGE_VADDR + TEXT_OFFSET	// compile time __va(_text)
-	add	x5, x5, x23			// add KASLR displacement
-	create_pgd_entry x0, x5, x3, x6
-	adrp	x6, _end			// runtime __pa(_end)
-	adrp	x3, _text			// runtime __pa(_text)
-	sub	x6, x6, x3			// _end - _text
-	add	x6, x6, x5			// runtime __va(_end)
-	create_block_map x0, x7, x3, x5, x6
-
-	/*
-	 * Since the page tables have been populated with non-cacheable
-	 * accesses (MMU disabled), invalidate the idmap and swapper page
-	 * tables again to remove any speculatively loaded cache lines.
-	 */
-	mov	x0, x25
-	add	x1, x26, #SWAPPER_DIR_SIZE
-	dmb	sy
-	bl	__inval_cache_range
-
-	ret	x28
-SYM_CODE_END(__create_page_tables)
-
-SYM_CODE_START(el2_setup)
-	mrs	x0, CurrentEL
-	cmp	x0, #CurrentEL_EL2
-	b.ne	1f
-	mrs	x0, sctlr_el2
-CPU_BE(	orr	x0, x0, #(1 << 25)	)	// Set the EE bit for EL2
-CPU_LE(	bic	x0, x0, #(1 << 25)	)	// Clear the EE bit for EL2
-	msr	sctlr_el2, x0
-	b	2f
-1:	mrs	x0, sctlr_el1
-CPU_BE(	orr	x0, x0, #(3 << 24)	)	// Set the EE and E0E bits for EL1
-CPU_LE(	bic	x0, x0, #(3 << 24)	)	// Clear the EE and E0E bits for EL1
-	msr	sctlr_el1, x0
-	mov	w20, #BOOT_CPU_MODE_EL1		// This cpu booted in EL1
-	isb
+	__INIT
+SYM_CODE_START_LOCAL(record_mmu_state)
+	mrs	x19, CurrentEL
+	cmp	x19, #CurrentEL_EL2
+	mrs	x19, sctlr_el1
+	b.ne	0f
+	mrs	x19, sctlr_el2
+0:
+CPU_LE( tbnz	x19, #SCTLR_ELx_EE_SHIFT, 1f	)
+CPU_BE( tbz	x19, #SCTLR_ELx_EE_SHIFT, 1f	)
+	tst	x19, #SCTLR_ELx_C		// Z := (C == 0)
+	and	x19, x19, #SCTLR_ELx_M		// isolate M bit
+	csel	x19, xzr, x19, eq		// clear x19 if Z
 	ret
 
-	/* Hyp configuration. */
-2:	mov	x0, #(1 << 31)			// 64-bit EL1
-	msr	hcr_el2, x0
-
-	/* Generic timers. */
-	mrs	x0, cnthctl_el2
-	orr	x0, x0, #3			// Enable EL1 physical timers
-	msr	cnthctl_el2, x0
-	msr	cntvoff_el2, xzr		// Clear virtual offset
-
-#ifdef CONFIG_ARM_GIC_V3
-	/* GICv3 system register access */
-	mrs	x0, id_aa64pfr0_el1
-	ubfx	x0, x0, #24, #4
-	cmp	x0, #1
-	b.ne	3f
-
-	mrs_s	x0, ICC_SRE_EL2
-	orr	x0, x0, #ICC_SRE_EL2_SRE	// Set ICC_SRE_EL2.SRE==1
-	orr	x0, x0, #ICC_SRE_EL2_ENABLE	// Set ICC_SRE_EL2.Enable==1
-	msr_s	ICC_SRE_EL2, x0
-	isb					// Make sure SRE is now set
-	mrs_s	x0, ICC_SRE_EL2			// Read SRE back,
-	tbz	x0, #0, 3f			// and check that it sticks
-	msr_s	ICH_HCR_EL2, xzr		// Reset ICC_HCR_EL2 to defaults
-
-3:
-#endif
-
-	/* Populate ID registers. */
-	mrs	x0, midr_el1
-	mrs	x1, mpidr_el1
-	msr	vpidr_el2, x0
-	msr	vmpidr_el2, x1
-
-	/* sctlr_el1 */
-	mov	x0, #0x0800			// Set/clear RES{1,0} bits
-CPU_BE(	movk	x0, #0x33d0, lsl #16	)	// Set EE and E0E on BE systems
-CPU_LE(	movk	x0, #0x30d0, lsl #16	)	// Clear EE and E0E on LE systems
-	msr	sctlr_el1, x0
-
-	/* Coprocessor traps. */
-	mov	x0, #0x33ff
-	msr	cptr_el2, x0			// Disable copro. traps to EL2
-
-#ifdef CONFIG_COMPAT
-	msr	hstr_el2, xzr			// Disable CP15 traps to EL2
-#endif
-
-	/* EL2 debug */
-	mrs	x0, id_aa64dfr0_el1		// Check ID_AA64DFR0_EL1 PMUVer
-	sbfx	x0, x0, #8, #4
-	cmp	x0, #1
-	b.lt	4f				// Skip if no PMU present
-	mrs	x0, pmcr_el0			// Disable debug access traps
-	ubfx	x0, x0, #11, #5			// to EL2 and allow access to
-4:
-	csel	x0, xzr, x0, lt			// all PMU counters from EL1
-	msr	mdcr_el2, x0			// (if they exist)
-
-	/* Stage-2 translation */
-	msr	vttbr_el2, xzr
-
-	/* Hypervisor stub */
-	adrp	x0, __hyp_stub_vectors
-	add	x0, x0, #:lo12:__hyp_stub_vectors
-	msr	vbar_el2, x0
-
-	/* spsr */
-	mov	x0, #(PSR_F_BIT | PSR_I_BIT | PSR_A_BIT | PSR_D_BIT |\
-		      PSR_MODE_EL1h)
-	msr	spsr_el2, x0
-	msr	elr_el2, lr
-	mov	w20, #BOOT_CPU_MODE_EL2		// This CPU booted in EL2
-	eret
-SYM_CODE_END(el2_setup)
+	/*
+	 * Set the correct endianness early so all memory accesses issued
+	 * before init_kernel_el() occur in the correct byte order. Note that
+	 * this means the MMU must be disabled, or the active ID map will end
+	 * up getting interpreted with the wrong byte order.
+	 */
+1:	eor	x19, x19, #SCTLR_ELx_EE
+	bic	x19, x19, #SCTLR_ELx_M
+	b.ne	2f
+	pre_disable_mmu_workaround
+	msr	sctlr_el2, x19
+	b	3f
+2:	pre_disable_mmu_workaround
+	msr	sctlr_el1, x19
+3:	isb
+	mov	x19, xzr
+	ret
+SYM_CODE_END(record_mmu_state)
 
 /*
  * Preserve the arguments passed by the bootloader in x0 .. x3
@@ -435,11 +174,14 @@ SYM_CODE_START_LOCAL(preserve_boot_args)
 	stp	x21, x1, [x0]			// x0 .. x3 at kernel entry
 	stp	x2, x3, [x0, #16]
 
+	cbnz	x19, 0f				// skip cache invalidation if MMU is on
 	dmb	sy				// needed before dc ivac with
 						// MMU off
 
 	add	x1, x0, #0x20			// 4 x 8 bytes
-	b	__inval_cache_range		// tail call
+	b	dcache_inval_poc		// tail call
+0:	str_l   x19, mmu_enabled_at_boot, x0
+	ret
 SYM_CODE_END(preserve_boot_args)
 
 	/*
@@ -492,6 +234,7 @@ SYM_FUNC_START_LOCAL(__primary_switched)
 	sub	x4, x4, x0			// the kernel virtual and
 	str_l	x4, kimage_voffset, x5		// physical mappings
 
+	mov	x0, x20
 	bl	set_cpu_boot_mode_flag
 
 #if defined(CONFIG_KASAN_GENERIC) || defined(CONFIG_KASAN_SW_TAGS)
@@ -637,6 +380,7 @@ SYM_FUNC_END(secondary_startup)
 
 	.text
 SYM_FUNC_START_LOCAL(__secondary_switched)
+	mov	x0, x20
 	bl	set_cpu_boot_mode_flag
 
 	mov	x0, x20
@@ -673,12 +417,10 @@ SYM_FUNC_END(__secondary_too_slow)
  */
 SYM_FUNC_START_LOCAL(set_cpu_boot_mode_flag)
 	adr_l	x1, __boot_cpu_mode
-	cmp	w20, #BOOT_CPU_MODE_EL2
+	cmp	w0, #BOOT_CPU_MODE_EL2
 	b.ne	1f
 	add	x1, x1, #4
-1:	str	w20, [x1]			// This CPU has booted in EL1
-	dmb	sy
-	dc	ivac, x1			// Invalidate potentially stale cache line
+1:	str	w0, [x1]			// Save CPU boot mode
 	ret
 SYM_FUNC_END(set_cpu_boot_mode_flag)
 
@@ -692,20 +434,13 @@ SYM_FUNC_END(set_cpu_boot_mode_flag)
  *    it is committed to memory.
  */
 
-       .macro  update_early_cpu_boot_status status, tmp1, tmp2
-       mov     \tmp2, #\status
-       str_l   \tmp2, __early_cpu_boot_status, \tmp1
-       dmb     sy
-       dc      ivac, \tmp1                     // Invalidate potentially stale cache line
-       .endm
-
-	.pushsection	.data..cacheline_aligned
-	.align	L1_CACHE_SHIFT
-	.globl __early_cpu_boot_status ASM_NL \
-	ALIGN ASM_NL \
-	__early_cpu_boot_status:
-	.long 	0
-	.popsection
+	.macro	update_early_cpu_boot_status status, tmp1, tmp2
+	mov	\tmp2, #\status
+	adr_l	\tmp1, __early_cpu_boot_status
+	str	\tmp2, [\tmp1]
+	dmb	sy
+	dc	ivac, \tmp1			// Invalidate potentially stale cache line
+	.endm
 
 /*
  * Enable the MMU.
@@ -722,31 +457,18 @@ SYM_FUNC_END(set_cpu_boot_mode_flag)
  */
 	.section ".idmap.text","a"
 SYM_FUNC_START(__enable_mmu)
-	mrs	x18, sctlr_el1			// preserve old SCTLR_EL1 value
 	mrs	x3, ID_AA64MMFR0_EL1
-	ubfx	x4, x3, #ID_AA64MMFR0_EL1_TGRAN_SHIFT, 4
-	cmp     x4, #ID_AA64MMFR0_EL1_TGRAN_SUPPORTED_MIN
-	b.ne    __no_granule_support
-	update_early_cpu_boot_status 0, x1, x2
+	ubfx	x3, x3, #ID_AA64MMFR0_EL1_TGRAN_SHIFT, 4
+	cmp     x3, #ID_AA64MMFR0_EL1_TGRAN_SUPPORTED_MIN
+	b.lt    __no_granule_support
+	cmp     x3, #ID_AA64MMFR0_EL1_TGRAN_SUPPORTED_MAX
+	b.gt    __no_granule_support
+	phys_to_ttbr x2, x2
 	msr	ttbr0_el1, x2			// load TTBR0
-	msr	ttbr1_el1, x1			// load TTBR1
-	isb
-	msr	sctlr_el1, x0
-	isb
-	/*
-	 * Invalidate the local I-cache so that any instructions fetched
-	 * speculatively from the PoC are discarded, since they may have
-	 * been dynamically patched at the PoU.
-	 */
-	ic	iallu
-	dsb	nsh
-	isb
-	
-	movz    x9, #0x5000
-  	movk    x9, #0x5d46, lsl #16
-  	mov     w10, #-1
-  	str     w10, [x9]
-	
+	load_ttbr1 x1, x1, x3
+
+	set_sctlr_el1	x0
+
 	ret
 SYM_FUNC_END(__enable_mmu)
 
@@ -775,14 +497,19 @@ SYM_FUNC_END(__cpu_secondary_check52bitva)
 
 SYM_FUNC_START_LOCAL(__no_granule_support)
 	/* Indicate that this CPU can't boot and is stuck in the kernel */
-	update_early_cpu_boot_status CPU_STUCK_IN_KERNEL, x1, x2
+	update_early_cpu_boot_status \
+		CPU_STUCK_IN_KERNEL | CPU_STUCK_REASON_NO_GRAN, x1, x2
 1:
 	wfe
 	wfi
-	b 1b
+	b	1b
 SYM_FUNC_END(__no_granule_support)
 
 SYM_FUNC_START_LOCAL(__primary_switch)
+	adrp	x1, reserved_pg_dir
+	adrp	x2, __pi_init_idmap_pg_dir
+	bl	__enable_mmu
+
 	adrp	x1, early_init_stack
 	mov	sp, x1
 	mov	x29, xzr
