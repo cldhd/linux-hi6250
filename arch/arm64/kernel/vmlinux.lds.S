@@ -160,6 +160,17 @@ PECOFF_FILE_ALIGNMENT = 0x200;
 #define PECOFF_EDATA_PADDING
 #endif
 
+/*
+ * Align Image to 2MB boundary so an appended DTB starts at a known offset.
+ */
+FDT_FILE_ALIGNMENT = (1 << 21);
+#ifdef CONFIG_ARM64_APPENDED_DTB
+#define FDT_EDATA_PADDING	\
+	.fdt_edata_padding : { BYTE(0); . = ALIGN(FDT_FILE_ALIGNMENT); }
+#else
+#define FDT_EDATA_PADDING
+#endif
+
 SECTIONS
 {
 	/*
@@ -327,6 +338,7 @@ SECTIONS
 	}
 
 	PECOFF_EDATA_PADDING
+	FDT_EDATA_PADDING
 	__pecoff_data_rawsize = ABSOLUTE(. - __initdata_begin);
 	_edata = .;
 

@@ -84,7 +84,65 @@
 	 */
 SYM_CODE_START(primary_entry)
 	bl	record_mmu_state
+
+	/*
+	 * Disable the SP805 hardware watchdog at 0xe8a06000 before it
+	 * reboots the device.  The bootloader arms it before jumping to
+	 * the kernel.  SP805 disable sequence: unlock, clear control, lock.
+	 */
+	movz	x8, #0xe8a0, lsl #16
+	movk	x8, #0x6000		// x8 = 0xe8a06000 (watchdog base)
+	movz	w9, #0xe551
+	movk	w9, #0x1acc, lsl #16	// w9 = 0x1ACCE551 (SP805 unlock key)
+	str	w9, [x8, #0xC00]	// WDTLOCK = unlock
+	str	wzr, [x8, #0x008]	// WDTCONTROL = 0 (disable)
+	movz	w9, #0x0001
+	str	w9, [x8, #0xC00]	// WDTLOCK = lock
+	ldr	w9, [x8, #0xC00]	// readback to flush
+
 	bl	preserve_boot_args
+
+#ifdef CONFIG_ARM64_APPENDED_DTB
+	/*
+	 * Look for a DTB appended right after the Image.
+	 * The linker script aligns _edata to 2MB when this option is on,
+	 * so the DTB (cat Image foo.dtb) starts at the physical address
+	 * of _edata.  Since _edata == __bss_start, the BSS-clear in
+	 * early_map_kernel() would destroy the DTB.  Copy it past _end
+	 * (after BSS + init page tables) so it survives.
+	 */
+	adr_l	x8, _edata			// source: appended DTB
+	ldr	w9, [x8]
+#ifndef __AARCH64EB__
+	mov	w10, #0x0dd0
+	movk	w10, #0xedfe, lsl #16		// LE FDT magic 0xEDFE0DD0
+#else
+	mov	w10, #0xfeed
+	movk	w10, #0xd00d, lsl #16
+#endif
+	cmp	w9, w10
+	b.ne	.Lno_appended_dtb
+
+	/* Read FDT totalsize from header offset 4 (big-endian) */
+	ldr	w11, [x8, #4]
+	rev	w11, w11			// byte-swap BE→LE
+	/* Round up to 8 bytes for clean copy */
+	add	x11, x11, #7
+	bic	x11, x11, #7
+
+	/* Copy DTB from _edata to past _end (safe from BSS clear) */
+	adr_l	x12, _end			// destination
+	mov	x13, x8				// source
+	mov	x14, x11			// byte count
+.Lcopy_dtb:
+	ldr	x15, [x13], #8
+	str	x15, [x12], #8
+	subs	x14, x14, #8
+	b.hi	.Lcopy_dtb
+
+	adr_l	x21, _end			// FDT pointer = copy destination
+.Lno_appended_dtb:
+#endif
 
 	adrp	x1, early_init_stack
 	mov	sp, x1
@@ -468,11 +526,6 @@ SYM_FUNC_START(__enable_mmu)
 	load_ttbr1 x1, x1, x3
 	
 	set_sctlr_el1	x0
-
-	movz    x9, #0x5000
-  	movk    x9, #0x5d46, lsl #16
-  	mov     w10, #-1
-  	str     w10, [x9]
 
 	ret
 SYM_FUNC_END(__enable_mmu)

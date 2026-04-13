@@ -1028,6 +1028,7 @@ void start_kernel(void)
 	page_address_init();
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
+	/* debug removed */ /* row 110 light green = back in start_kernel */
 	mm_core_init_early();
 	/* Static keys and static calls are needed by LSMs */
 	jump_label_init();
@@ -1113,6 +1114,7 @@ void start_kernel(void)
 	/* init some links before init_ISA_irqs() */
 	early_irq_init();
 	init_IRQ();
+	/* debug removed */ /* row 120 light blue = IRQ init done */
 	tick_init();
 	rcu_init_nohz();
 	timers_init();
@@ -1136,6 +1138,7 @@ void start_kernel(void)
 
 	early_boot_irqs_disabled = false;
 	local_irq_enable();
+	/* debug removed */ /* row 125 salmon = IRQs enabled */
 
 	kmem_cache_init_late();
 
@@ -1144,7 +1147,9 @@ void start_kernel(void)
 	 * we've done PCI setups etc, and console_init() must be aware of
 	 * this. But we do want output early, in case something goes wrong.
 	 */
+	/* debug removed */ /* row 130 light yellow = pre-console */
 	console_init();
+	/* debug removed */ /* row 140 light cyan = console done */
 	if (panic_later)
 		panic("Too many boot %s vars at `%s'", panic_later,
 		      panic_param);
@@ -1206,6 +1211,7 @@ void start_kernel(void)
 	arch_post_acpi_subsys_init();
 	kcsan_init();
 
+	/* debug removed */ /* row 150 light magenta = pre-rest_init */
 	/* Do the rest non-__init'ed, we're now alive */
 	rest_init();
 
@@ -1662,6 +1668,7 @@ void __init console_on_rootfs(void)
 
 static noinline void __init kernel_init_freeable(void)
 {
+	/* debug removed */ /* row 155 gray = kernel_init_freeable entry */
 	/* Now the scheduler is fully set up and can do blocking allocations */
 	gfp_allowed_mask = __GFP_BITS_MASK;
 
@@ -1673,15 +1680,18 @@ static noinline void __init kernel_init_freeable(void)
 	cad_pid = get_pid(task_pid(current));
 
 	smp_prepare_cpus(setup_max_cpus);
+	/* debug removed */ /* row 160 dark red = smp_prepare done */
 
 	workqueue_init();
 
 	init_mm_internals();
 
 	do_pre_smp_initcalls();
+	/* debug removed */ /* row 170 medium green = pre_smp_initcalls done */
 	lockup_detector_init();
 
 	smp_init();
+	/* debug removed */ /* row 180 medium blue = smp_init done */
 	sched_init_smp();
 
 	workqueue_init_topology();
@@ -1690,6 +1700,7 @@ static noinline void __init kernel_init_freeable(void)
 	page_alloc_init_late();
 
 	do_basic_setup();
+	/* debug removed */ /* row 190 olive = do_basic_setup done */
 
 	kunit_run_all_tests();
 

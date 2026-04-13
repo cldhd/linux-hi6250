@@ -47,6 +47,13 @@
 #include <asm/scs.h>
 #include <asm/sections.h>
 #include <asm/setup.h>
+#include <asm/early_ioremap.h>
+
+/* Debug pixel lines disabled for boot debugging */
+void __init dbg_fb_row_late(int row, u32 color)
+{
+}
+
 #include <asm/smp_plat.h>
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
@@ -288,8 +295,10 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 
 	early_fixmap_init();
 	early_ioremap_init();
+	/* debug removed */	/* row 0 green = early_ioremap done */
 
 	setup_machine_fdt(__fdt_pointer);
+	/* debug removed */	/* row 10 blue = FDT parsed */
 
 	/*
 	 * Initialise the static keys early as they may be enabled by the
@@ -330,8 +339,10 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 	}
 
 	arm64_memblock_init();
+	/* debug removed */	/* row 20 red = memblock done */
 
 	paging_init();
+	/* debug removed */	/* row 30 yellow = paging done */
 
 	acpi_table_upgrade();
 
@@ -340,19 +351,25 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 
 	if (acpi_disabled)
 		unflatten_device_tree();
+	/* debug removed */	/* row 40 magenta = DT unflattened */
 
 	bootmem_init();
+	/* debug removed */	/* row 50 cyan = bootmem done */
 
 	kasan_init();
+	/* debug removed */	/* row 60 orange = kasan done */
 
 	request_standard_resources();
+	/* debug removed */	/* row 70 white = resources done */
 
 	early_ioremap_reset();
+	/* debug removed */  /* row 80 dark green = ioremap reset done */
 
 	if (acpi_disabled)
 		psci_dt_init();
 	else
 		psci_acpi_init();
+	/* debug removed */  /* row 90 dark blue = psci done */
 
 	arm64_rsi_init();
 
@@ -375,6 +392,7 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 			"This indicates a broken bootloader or old kernel\n",
 			boot_args[1], boot_args[2], boot_args[3]);
 	}
+	/* debug removed */ /* row 100 pink = setup_arch done */
 }
 
 static inline bool cpu_can_disable(unsigned int cpu)
