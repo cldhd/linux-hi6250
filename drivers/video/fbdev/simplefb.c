@@ -537,6 +537,8 @@ static int simplefb_probe(struct platform_device *pdev)
 	struct simplefb_par *par;
 	struct resource *res, *mem;
 
+	/* debug removed */ /* row 200 magenta = simplefb_probe entry */
+
 	if (fb_get_options("simplefb", NULL))
 		return -ENODEV;
 
@@ -602,9 +604,11 @@ static int simplefb_probe(struct platform_device *pdev)
 	info->screen_base = ioremap_wc(info->fix.smem_start,
 				       info->fix.smem_len);
 	if (!info->screen_base) {
+		/* debug removed */ /* row 220 red = ioremap failed */
 		ret = -ENOMEM;
 		goto error_fb_release;
 	}
+	/* debug removed */ /* row 205 gray = ioremap OK */
 	info->pseudo_palette = par->palette;
 
 	ret = simplefb_clocks_get(par, pdev);
@@ -634,16 +638,17 @@ static int simplefb_probe(struct platform_device *pdev)
 
 	ret = devm_aperture_acquire_for_platform_device(pdev, par->base, par->size);
 	if (ret) {
-		dev_err(&pdev->dev, "Unable to acquire aperture: %d\n", ret);
+		/* debug removed */ /* row 220 red = aperture failed */
 		goto error_genpds;
 	}
 	ret = register_framebuffer(info);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "Unable to register simplefb: %d\n", ret);
+		/* debug removed */ /* row 220 orange = register failed */
 		goto error_genpds;
 	}
 
 	dev_info(&pdev->dev, "fb%d: simplefb registered!\n", info->node);
+	/* debug removed */ /* row 210 green = simplefb registered OK */
 
 	return 0;
 
