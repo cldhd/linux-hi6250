@@ -347,16 +347,6 @@
 			compatible = "arm,sp804";
 			reg = <0x0 0xfff14000 0x0 0x1000>;
 			interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&osc32k &osc32k &pclk>;
-			clock-names = "osc32khz", "osc32khz", "apb_pclk";
-		};
-
-		/*
-		dual_timer: timer@fff14000 {
-			compatible = "arm,sp804";
-			reg = <0x0 0xfff14000 0x0 0x1000>;
-			interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>,
 				<GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ao_ctrl HI6250_OSC32KHZ>,
 				<&ao_ctrl HI6250_OSC32KHZ>,
@@ -364,9 +354,9 @@
 			clock-names = "osc32khz", "osc32khz", "apb_pclk";
 		};
 		
-		ao_ctrl: ao_ctrl@0 {
+		ao_ctrl: ao_ctrl@fff0a000 {
 			compatible = "hisilicon,hi6250-aoctrl", "syscon";
-			reg = <0x0 0x00000000 0x0 0xffffffff>;
+			reg = <0x0 0xfff0a000 0x0 0x1000>;
 			#clock-cells = <1>;
 		};
 
@@ -374,6 +364,11 @@
 			compatible = "hisilicon,hi6250-pmuctrl", "syscon";
 			reg = <0x0 0xfff34000 0x0 0x1000>;
 			#clock-cells = <1>;
+		};
+
+		pctrl: pctrl@e8a09000 {
+			compatible = "hisilicon,hi6250-pctrl", "syscon";
+			reg = <0x0 0xe8a09000 0x0 0x2000>;
 		};
 
 		sys_ctrl: sys_ctrl@fff0a000 {
@@ -572,8 +567,6 @@
 			#size-cells = <0>;
 			clocks = <&crg_ctrl HI6250_CLK_I2C0>;
 			resets = <&iomcu_rst 0x20 3>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&i2c0_pmx_func &i2c0_cfg_func>;
 		};
 		
 		i2c2: i2c@ffd73000 {
@@ -585,8 +578,6 @@
 			#size-cells = <0>;
 			clocks = <&crg_ctrl HI6250_CLK_I2C2>;
 			resets = <&iomcu_rst 0x20 5>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&i2c2_pmx_func &i2c2_cfg_func>;
 		};
 
 		i2c3: i2c@fdf0c000 {
@@ -598,8 +589,6 @@
 			#size-cells = <0>;
 			clocks = <&crg_ctrl HI6250_CLK_I2C3>;
 			resets = <&crg_rst 0x78 7>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&i2c3_pmx_func &i2c3_cfg_func>;
 		};
 
 		i2c4: i2c@fdf0d000 {
@@ -611,8 +600,6 @@
 			#size-cells = <0>;
 			clocks = <&crg_ctrl HI6250_CLK_I2C4>;
 			resets = <&crg_rst 0x78 27>; // TODO: review
-			pinctrl-names = "default";
-			pinctrl-0 = <&i2c4_pmx_func &i2c4_cfg_func>;
 		};
 
 		gpio0: gpio@e8a0b000 {
@@ -1173,18 +1160,48 @@
 			dma-type = "hi3660_dma";
 		};
 
-		usb3_otg_bc: usb3_otg_bc@ff200000 {
-			compatible = "hisilicon,hi3660-usb3-otg-bc", "syscon", "simple-mfd";
-			reg = <0x0 0xff200000 0x0 0x1000>;
+		/*
+		 * Hi6250 USB2 OTG: DWC2 core at ff100000, AHBIF at ff200000.
+		 * Wrapper does power-on (CRG clk/rst, PCTRL ABB, AHBIF config)
+		 * then spawns DWC2 child via of_platform_populate.
+		 */
+		usb_otg: usb@ff100000 {
+			compatible = "hisilicon,hi6250-usb";
+			reg = <0x0 0xff200000 0x0 0x100>;
+			hisilicon,pericrg-syscon = <&crg_ctrl>;
+			hisilicon,pctrl-syscon = <&pctrl>;
+			hisilicon,pmuctrl-syscon = <&pmu_ctrl>;
+			clocks = <&pmu_ctrl HI6250_CLK_GATE_ABB_192>;
+			clock-names = "clk_abb_192";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
 			status = "disable";
 
-			usb_phy: usb-phy {
-				compatible = "hisilicon,hi3660-usb-phy";
-				#phy-cells = <0>;
-				hisilicon,pericrg-syscon = <&crg_ctrl>;
-				hisilicon,pctrl-syscon = <&pmu_ctrl>;
-				hisilicon,eye-diagram-param = <0x059066DB>;
+			usb_dwc2: usb@ff100000 {
+				compatible = "hisilicon,hi6220-usb", "snps,dwc2";
+				reg = <0x0 0xff100000 0x0 0x40000>;
+				interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
+				dr_mode = "peripheral";
+				g-rx-fifo-size = <512>;
+				g-np-tx-fifo-size = <128>;
+				g-tx-fifo-size = <128 128 128 128 128 128>;
 			};
+		};
+
+		// eMMC
+		sdhci0: sdhci@ff390000 {
+			compatible = "arasan,sdhci-4.9a";
+			reg = <0x0 0xff390000 0x0 0x10000>;
+			interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI6250_CLK_EMMC0>,
+				<&crg_ctrl HI6250_HCLK_EMMC0>;
+			clock-names = "clk_xin", "clk_ahb";
+			bus-width = <8>;
+			cap-mmc-highspeed;
+			non-removable;
+			no-1-8-v;
+			status = "disable";
 		};
 
 		// SD
@@ -1217,6 +1234,5 @@
 			card-detect-delay = <200>;
 			status = "disable";
 		};
-		*/
 	};
 };
