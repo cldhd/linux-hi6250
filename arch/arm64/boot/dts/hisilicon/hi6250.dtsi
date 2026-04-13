@@ -375,6 +375,12 @@
 			compatible = "hisilicon,hi6250-sysctrl", "syscon";
 			reg = <0x0 0xfff0a000 0x0 0x1000>;
 			#clock-cells = <1>;
+			reboot-offset = <0x4>;
+		};
+
+		hi6250_reboot: reboot {
+			compatible = "hisilicon,hi6250-reboot";
+			hisilicon,sys-ctrl = <&sys_ctrl>;
 		};
 		
 		crg_ctrl: crg_ctrl@fff35000 {

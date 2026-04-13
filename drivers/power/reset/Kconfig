@@ -117,6 +117,16 @@ config POWER_RESET_HISI
 	help
 	  Reboot support for Hisilicon boards.
 
+config POWER_RESET_HI6250
+	bool "HiSilicon Hi6250 (Kirin 659) reboot driver"
+	depends on ARCH_HISI || COMPILE_TEST
+	depends on MFD_SYSCON
+	help
+	  Reboot support for Hi6250 (Kirin 659)-based devices such as the
+	  Huawei Honor 9 Lite. The SoC reset is delegated to the LPM3
+	  co-processor via an NMI pulse; a bare sysctrl-register write
+	  (as used by hi6220) does not reset this SoC.
+
 config POWER_RESET_LINKSTATION
 	tristate "Buffalo LinkStation power-off driver"
 	depends on ARCH_MVEBU || COMPILE_TEST
