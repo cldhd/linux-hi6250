@@ -27,3 +27,5 @@ endif
 
 obj-$(CONFIG_USB_DWC2_PCI)		+= dwc2_pci.o
 dwc2_pci-y				:= pci.o
+
+obj-$(CONFIG_USB_DWC2)			+= dwc2-hi6250.o

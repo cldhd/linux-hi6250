@@ -18,6 +18,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/slab.h>
 #include <linux/usb.h>
 
@@ -421,6 +422,22 @@ int dwc2_core_reset(struct dwc2_hsotg *hsotg, bool skip_wait)
 		    (gusbcfg & GUSBCFG_FORCEHOSTMODE)) {
 			wait_for_host_mode = true;
 		}
+	}
+
+	/*
+	 * On HiSilicon Hi6250, the PHY clock doesn't run until after
+	 * device enumeration, so the soft reset hangs the bus.  Skip
+	 * the soft reset when the parent has already done a hardware
+	 * reset via CRG — check for the Hi6250 GSNPSID.
+	 */
+	if (hsotg->hw_params.snpsid == 0x4f54310a &&
+	    hsotg->dev->of_node && hsotg->dev->of_node->parent &&
+	    of_device_is_compatible(hsotg->dev->of_node->parent,
+				    "hisilicon,hi6250-usb")) {
+		dev_dbg(hsotg->dev, "%s: skipping soft reset (HW reset by parent)\n",
+			__func__);
+		dwc2_clear_fifo_map(hsotg);
+		return 0;
 	}
 
 	/* Core Soft Reset */
