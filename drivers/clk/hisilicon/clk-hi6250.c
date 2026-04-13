@@ -54,10 +54,27 @@ static const struct hisi_fixed_rate_clock hi6250_fixed_rate_clks[] = {
 static void __init hi6250_clk_ao_init(struct device_node *np)
 {
 	struct hisi_clock_data *clk_data_ao;
+	struct clk **clk_table;
 
-	clk_data_ao = hisi_clk_init(np, HI6250_AO_NR_CLKS);
+	/*
+	 * ao_ctrl only provides fixed-rate clocks (PLLs) which don't need
+	 * register access.  Bypass hisi_clk_init() because of_iomap() fails
+	 * when ao_ctrl and sys_ctrl share the same register block (0xfff0a000).
+	 */
+	clk_data_ao = kzalloc(sizeof(*clk_data_ao), GFP_KERNEL);
 	if (!clk_data_ao)
 		return;
+
+	clk_table = kcalloc(HI6250_AO_NR_CLKS, sizeof(*clk_table), GFP_KERNEL);
+	if (!clk_table) {
+		kfree(clk_data_ao);
+		return;
+	}
+
+	clk_data_ao->base = NULL;
+	clk_data_ao->clk_data.clks = clk_table;
+	clk_data_ao->clk_data.clk_num = HI6250_AO_NR_CLKS;
+	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data_ao->clk_data);
 
 	hisi_clk_register_fixed_rate(hi6250_fixed_rate_clks,
 				ARRAY_SIZE(hi6250_fixed_rate_clks), clk_data_ao);
@@ -80,8 +97,11 @@ static void __init hi6250_clk_pmuctrl_init(struct device_node *np)
 	struct hisi_clock_data *clk_data_pmu;
 
 	clk_data_pmu = hisi_clk_init(np, HI6250_PMUCTRL_NR_CLKS);
-	if (!clk_data_pmu)
+	if (!clk_data_pmu) {
+		pr_err("hi6250-pmuctrl: hisi_clk_init FAILED\n");
 		return;
+	}
+	pr_info("hi6250-pmuctrl: init OK\n");
 
 	hisi_clk_register_gate(hi6250_pmuctrl_gate_clks,
 				ARRAY_SIZE(hi6250_pmuctrl_gate_clks), clk_data_pmu);
@@ -103,7 +123,7 @@ static const struct hisi_fixed_factor_clock hi6250_sctrl_fixed_factor_clks[] = {
 
 
 static const struct hisi_gate_clock hi6250_sctrl_gate_clks[] = {
-  { HI6250_CLK_ANGT_ASP_SUBSYS, "clk_angt_asp_subsys", "clk_ap_ppll0", CLK_GATE_HIWORD_MASK, 0x258, 0, 0, },
+  { HI6250_CLK_ANGT_ASP_SUBSYS, "clk_angt_asp_subsys", "clk_ppll0", CLK_GATE_HIWORD_MASK, 0x258, 0, 0, },
   { HI6250_CLK_MMBUF_PLL_ANDGT, "clk_mmbuf_pll_andgt", "clk_ppll0", CLK_GATE_HIWORD_MASK, 0x258, 6, 0, },
   { HI6250_PCLK_MMBUF_ANDGT, "pclk_mmbuf_andgt", "clk_mmbuf_sw", CLK_GATE_HIWORD_MASK, 0x258, 7, 0, },
   { HI6250_CLK_SYS_MMBUF_ANDGT, "clk_sys_mmbuf_andgt", "clkin_sys", CLK_GATE_HIWORD_MASK, 0x258, 6, 0, },
@@ -163,10 +183,10 @@ static const struct hisi_gate_clock hi6250_sctrl_gate_sep_clks[] = {
 
 
 static const struct hi6220_divider_clock hi6250_sctrl_divider_clks[] = {
-  { HI6250_CLK_AOBUS_DIV, "clk_aobus_div", "clk_ap_ppll0", CLK_SET_RATE_PARENT, 0x254, 0, 6, 0x3f0000, },
+  { HI6250_CLK_AOBUS_DIV, "clk_aobus_div", "clk_ppll0", CLK_SET_RATE_PARENT, 0x254, 0, 6, 0x3f0000, },
   { HI6250_CLKDIV_OUT0TCXO, "clkdiv_out0tcxo", "clkin_sys", CLK_SET_RATE_PARENT, 0x254, 6, 3, 0x1c00000, },
   { HI6250_CLKDIV_OUT1TCXO, "clkdiv_out1tcxo", "clkin_sys", CLK_SET_RATE_PARENT, 0x254, 9, 3, 0xe000000, },
-  { HI6250_CLKDIV_ASPSYS, "clkdiv_aspsys", "clk_ap_ppll0", CLK_SET_RATE_PARENT, 0x250, 0, 3, 0x70000, },
+  { HI6250_CLKDIV_ASPSYS, "clkdiv_aspsys", "clk_ppll0", CLK_SET_RATE_PARENT, 0x250, 0, 3, 0x70000, },
   { HI6250_ACLK_MMBUF_DIV, "aclk_mmbuf_div", "clk_mmbuf_pll_andgt", CLK_SET_RATE_PARENT, 0x258, 12, 4, 0xf0000000, },
   { HI6250_PCLK_MMBUF_DIV, "pclk_mmbuf_div", "pclk_mmbuf_andgt", CLK_SET_RATE_PARENT, 0x258, 10, 2, 0xc000000, },
 };
@@ -221,8 +241,11 @@ static void __init hi6250_clk_sys_init(struct device_node *np)
 	struct hisi_clock_data *clk_data_sys;
 
 	clk_data_sys = hisi_clk_init(np, HI6250_SCTRL_NR_CLKS);
-	if (!clk_data_sys)
+	if (!clk_data_sys) {
+		pr_err("hi6250-sysctrl: hisi_clk_init FAILED\n");
 		return;
+	}
+	pr_info("hi6250-sysctrl: init OK\n");
 
 	hisi_clk_register_fixed_factor(hi6250_sctrl_fixed_factor_clks,
 				ARRAY_SIZE(hi6250_sctrl_fixed_factor_clks), clk_data_sys);
@@ -248,11 +271,11 @@ static const struct hisi_fixed_factor_clock hi6250_crgctrl_fixed_factor_clks[] =
   { HI6250_PCLK_DBG, "pclk_dbg", "pclkdiv_dbg", 0x1, 1, 0, },
   { HI6250_CLK_DMA_IOMCU, "clk_dma_iomcu", "clk_fll_src", 0x1, 4, 0, },
   { HI6250_CLK_FACTOR_MMC0, "clk_factor_mmc0", "clkin_sys", 0x1, 6, 0, },
-  { HI6250_CLK_A53HPM_DIV, "clk_a53hpm_div", "clk_ap_ppll0", 0x1, 3, 0, },
+  { HI6250_CLK_A53HPM_DIV, "clk_a53hpm_div", "clk_ppll0", 0x1, 3, 0, },
   { HI6250_CLK_UART0_FAC, "clk_uart0_fac", "clkmux_uartl", 0x1, 1, 0, },
-  { HI6250_CLKFAC_USB2PHY, "clkfac_usb2phy", "clk_ap_ppll0", 0x1, 60, 0, },
+  { HI6250_CLKFAC_USB2PHY, "clkfac_usb2phy", "clk_ppll0", 0x1, 60, 0, },
   { HI6250_CLK_ABB_USB, "clk_abb_usb", "clk_gate_abb_192", 0x1, 1, 0, },
-  { HI6250_CLK_BLPWM, "clk_blpwm", "clk_ap_ppll0", 0x1, 8, 0, },
+  { HI6250_CLK_BLPWM, "clk_blpwm", "clk_ppll0", 0x1, 8, 0, },
   { HI6250_CLK_GPS_REF, "clk_gps_ref", "clkmux_gps_ref", 0x1, 1, 0, },
   { HI6250_CLK_FAC_ISPSN, "clk_fac_ispsn", "clk_isp_snclk_angt", 0x1, 10, 0, },
   { HI6250_CLK_RXDCFG_FAC, "clk_rxdcfg_fac", "clk_andgt_rxdphy", 0x1, 6, 0, },
@@ -278,8 +301,8 @@ static const struct hisi_gate_clock hi6250_crgctrl_gate_clks[] = {
   { HI6250_CLK_ANDGT_UARTH, "clk_andgt_uarth", "clk_a53hpm_div", CLK_GATE_HIWORD_MASK, 0xf4, 11, 0, },
   { HI6250_CLK_ANDGT_UARTL, "clk_andgt_uartl", "clk_a53hpm_div", CLK_GATE_HIWORD_MASK, 0xf4, 12, 0, },
   { HI6250_CLK_ANDGT_SPI, "clk_andgt_spi", "clk_a53hpm_div", CLK_GATE_HIWORD_MASK, 0xf4, 13, 0, },
-  { HI6250_CLK_ANDGT_OUT0, "clk_andgt_out0", "clk_ap_ppll3", CLK_GATE_HIWORD_MASK, 0xf0, 10, 0, },
-  { HI6250_CLK_ANDGT_OUT1, "clk_andgt_out1", "clk_ap_ppll3", CLK_GATE_HIWORD_MASK, 0xf0, 11, 0, },
+  { HI6250_CLK_ANDGT_OUT0, "clk_andgt_out0", "clk_ppll3", CLK_GATE_HIWORD_MASK, 0xf0, 10, 0, },
+  { HI6250_CLK_ANDGT_OUT1, "clk_andgt_out1", "clk_ppll3", CLK_GATE_HIWORD_MASK, 0xf0, 11, 0, },
   { HI6250_CLK_ANDGT_EDC0, "clk_andgt_edc0", "clkmux_edc0", CLK_GATE_HIWORD_MASK, 0xf0, 8, 0, },
   { HI6250_CLK_ANDGT_LDI0, "clk_andgt_ldi0", "clkmux_ldi0", CLK_GATE_HIWORD_MASK, 0xf0, 6, 0, },
   { HI6250_CLK_ANDGT_VENC, "clk_andgt_venc", "clkmux_venc", CLK_GATE_HIWORD_MASK, 0xf4, 0, 0, },
@@ -448,17 +471,17 @@ static const struct hi6220_divider_clock hi6250_crgctrl_divider_clks[] = {
 };
 
 
-static const char *clk_sysbus_mux_p[] = { "clk_ppll1", "clk_ap_ppll0" };
+static const char *clk_sysbus_mux_p[] = { "clk_ppll1", "clk_ppll0" };
 static const char *clk_wd0_mux_p[] = { "clkin_ref", "pclk_wd0_high" };
-static const char *clk_vivobus_mux_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll2", "clk_ap_ppll3" };
-static const char *clk_vcodecbus_mux_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll2", "clk_ap_ppll3" };
+static const char *clk_vivobus_mux_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll2", "clk_ppll3" };
+static const char *clk_vcodecbus_mux_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll2", "clk_ppll3" };
 static const char *clk_mmc0_muxsys_p[] = { "clk_factor_mmc0", "clk_mmc0_div" };
-static const char *clk_mmc0_muxpll_p[] = { "clk_ap_ppll0", "clk_ap_ppll3" };
+static const char *clk_mmc0_muxpll_p[] = { "clk_ppll0", "clk_ppll3" };
 static const char *clk_sd_muxsys_p[] = { "clk_factor_mmc0", "clk_mmc1_div" };
-static const char *clk_sd_muxpll_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll3", "clk_ap_ppll3" };
+static const char *clk_sd_muxpll_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll3", "clk_ppll3" };
 static const char *clk_sdio0_muxsy_p[] = { "clk_factor_mmc0", "clkdiv_sdio0" };
-static const char *clk_sdio0_muxpl_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll3", "clk_ap_ppll3" };
-static const char *clk_a53hpm_mux_p[] = { "clk_ap_ppll0", "clk_ppll1" };
+static const char *clk_sdio0_muxpl_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll3", "clk_ppll3" };
+static const char *clk_a53hpm_mux_p[] = { "clk_ppll0", "clk_ppll1" };
 static const char *clkmux_uarth_p[] = { "clkin_sys", "clkdiv_uarth" };
 static const char *clkmux_uartl_p[] = { "clkin_sys", "clkdiv_uartl" };
 static const char *clkmux_i2c_p[] = { "clkin_sys", "clkdiv_i2c" };
@@ -472,12 +495,12 @@ static const char *clkmux_timer11_b_p[] = { "clkin_ref", "clk_timer11", "apb_pcl
 static const char *clkmux_timer12_a_p[] = { "clkin_ref", "clk_timer12", "apb_pclk", "apb_pclk" };
 static const char *clkmux_timer12_b_p[] = { "clkin_ref", "clk_timer12", "apb_pclk", "apb_pclk" };
 static const char *clkmux_gps_ref_p[] = { "clk_mdm2gps0", "clk_mdm2gps1" };
-static const char *clkmux_edc0_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll2", "clk_ap_ppll3" };
-static const char *clkmux_ldi0_p[] = { "clk_ppll1", "clk_ap_ppll0", "clk_ap_ppll2", "clk_ap_ppll3" };
-static const char *clkmux_venc_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll3", "clk_ap_ppll3" };
-static const char *clkmux_vdec_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll2", "clk_ap_ppll3" };
-static const char *clkmux_ispa7_p[] = { "clk_ap_ppll0", "clk_ppll1", "clk_ap_ppll3", "clk_ap_ppll3" };
-static const char *clkmux_ispfunc_p[] = { "clk_ap_ppll0", "clk_ap_ppll2", "clk_ap_ppll3", "clk_ap_ppll3" };
+static const char *clkmux_edc0_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll2", "clk_ppll3" };
+static const char *clkmux_ldi0_p[] = { "clk_ppll1", "clk_ppll0", "clk_ppll2", "clk_ppll3" };
+static const char *clkmux_venc_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll3", "clk_ppll3" };
+static const char *clkmux_vdec_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll2", "clk_ppll3" };
+static const char *clkmux_ispa7_p[] = { "clk_ppll0", "clk_ppll1", "clk_ppll3", "clk_ppll3" };
+static const char *clkmux_ispfunc_p[] = { "clk_ppll0", "clk_ppll2", "clk_ppll3", "clk_ppll3" };
 static const char *clk_mux_ispsn_p[] = { "clkin_sys", "clk_div_ispsn" };
 static const char *clk_rxdcfg_mux_p[] = { "clk_rxdcfg_fac", "clkin_sys" };
 
@@ -519,10 +542,26 @@ static const struct hisi_mux_clock hi6250_crgctrl_mux_clks[] = {
 static void __init hi6250_clk_crg_init(struct device_node *np)
 {
 	struct hisi_clock_data *clk_data_crg;
+	int i;
+
+	/*
+	 * Ensure the fixed-rate PLL clocks exist before registering CRG
+	 * muxes that reference them as parents.  Normally ao_ctrl registers
+	 * these, but its of_iomap may fail when it shares the same register
+	 * block with sys_ctrl.  Duplicates are harmlessly rejected (-EEXIST).
+	 */
+	for (i = 0; i < ARRAY_SIZE(hi6250_fixed_rate_clks); i++)
+		clk_register_fixed_rate(NULL, hi6250_fixed_rate_clks[i].name,
+					hi6250_fixed_rate_clks[i].parent_name,
+					hi6250_fixed_rate_clks[i].flags,
+					hi6250_fixed_rate_clks[i].fixed_rate);
 
 	clk_data_crg = hisi_clk_init(np, HI6250_CRGCTRL_NR_CLKS);
-	if (!clk_data_crg)
+	if (!clk_data_crg) {
+		pr_err("hi6250-crgctrl: hisi_clk_init FAILED\n");
 		return;
+	}
+	pr_info("hi6250-crgctrl: init OK\n");
 
 	hisi_clk_register_fixed_factor(hi6250_crgctrl_fixed_factor_clks,
 				ARRAY_SIZE(hi6250_crgctrl_fixed_factor_clks), clk_data_crg);
