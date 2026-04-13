@@ -1945,6 +1945,40 @@ static int sdhci_arasan_probe(struct platform_device *pdev)
 		goto clk_dis_ahb;
 	}
 
+	{
+		struct clk *c = clk_xin;
+		struct clk *pll_test;
+		int depth = 0;
+		while (c && depth < 10) {
+			struct clk *p = clk_get_parent(c);
+			dev_err(dev, "  clk[%d]: %s rate=%lu parent=%s orphan=%d\n",
+				depth, __clk_get_name(c), clk_get_rate(c),
+				p ? __clk_get_name(p) : "ROOT/ORPHAN",
+				__clk_is_enabled(c));
+			c = p;
+			depth++;
+		}
+		/* Check if PLLs exist globally */
+		pll_test = clk_get(NULL, "clk_ppll0");
+		if (IS_ERR(pll_test))
+			dev_err(dev, "  PLL LOOKUP: clk_ppll0 NOT FOUND err=%ld\n",
+				PTR_ERR(pll_test));
+		else {
+			dev_err(dev, "  PLL LOOKUP: clk_ppll0 rate=%lu\n",
+				clk_get_rate(pll_test));
+			clk_put(pll_test);
+		}
+		pll_test = clk_get(NULL, "clkin_sys");
+		if (IS_ERR(pll_test))
+			dev_err(dev, "  PLL LOOKUP: clkin_sys NOT FOUND err=%ld\n",
+				PTR_ERR(pll_test));
+		else {
+			dev_err(dev, "  PLL LOOKUP: clkin_sys rate=%lu\n",
+				clk_get_rate(pll_test));
+			clk_put(pll_test);
+		}
+	}
+
 	clk_dll = devm_clk_get_optional_enabled(dev, "gate");
 	if (IS_ERR(clk_dll)) {
 		ret = dev_err_probe(dev, PTR_ERR(clk_dll), "failed to get dll clk\n");
