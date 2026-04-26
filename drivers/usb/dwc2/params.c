@@ -40,6 +40,7 @@ static void dwc2_set_his_params(struct dwc2_hsotg *hsotg)
 	p->host_channels = 16;
 	p->phy_type = DWC2_PHY_TYPE_PARAM_UTMI;
 	p->phy_utmi_width = 8;
+	hsotg->hw_params.utmi_phy_data_width = GHWCFG4_UTMI_PHY_DATA_WIDTH_8;
 	p->i2c_enable = false;
 	p->reload_ctl = false;
 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR16 <<

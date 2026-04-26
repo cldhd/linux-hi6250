@@ -2089,6 +2089,14 @@ config RTC_DRV_GOLDFISH
 	  Goldfish is a code name for the virtual platform developed by Google
 	  for Android emulation.
 
+config RTC_DRV_HI6555V100
+	bool "Hi6555V100 PMIC RTC"
+	depends on ARCH_HISI || COMPILE_TEST
+	default ARCH_HISI
+	help
+	  Say yes here to use the retained RTC found in the Huawei
+	  Hi6555V100 PMIC paired with Hi6250 SoCs.
+
 config RTC_DRV_WILCO_EC
 	tristate "Wilco EC RTC"
 	depends on WILCO_EC

@@ -147,10 +147,28 @@ static int hi6250_usb2_poweron(struct hi6250_usb2 *usb)
 		 readl(usb->ahbif + 0x08), readl(usb->ahbif + 0x0c),
 		 readl(usb->ahbif + 0x10), readl(usb->ahbif + 0x14));
 
-	/* Step 5: Configure AHBIF ctrl0 (exactly as downstream) */
+	/*
+	 * Step 5: Configure AHBIF ctrl0 (exactly as downstream).
+	 *
+	 * Bit layout from downstream union usbotg2_ctrl0 in
+	 * drivers/usb/susb/hisi_usb_otg_type.h:
+	 *   bit 0   = idpullup_sel  (not touched here — leave as default)
+	 *   bit 1   = idpullup
+	 *   bit 2   = acaenb_sel    -> set to 1 (register source)
+	 *   bit 3   = acaenb        -> clear to 0 (ACA disabled)
+	 *   bit 4-5 = id_sel        -> set to 01 (from PHY iddig)
+	 *   bit 6   = id
+	 *
+	 * Downstream init_usb_otg_phy_hi6250 sets:
+	 *   ctrl0.bits.id_sel     = 1
+	 *   ctrl0.bits.acaenb_sel = 1
+	 *   ctrl0.bits.acaenb     = 0
+	 */
 	val = readl(usb->ahbif + AHBIF_CTRL0);
-	val |= BIT(0) | BIT(4);   /* id_sel | acaenb_sel */
-	val &= ~BIT(5);           /* clear acaenb */
+	val |= BIT(2);            /* acaenb_sel = 1 */
+	val &= ~BIT(3);           /* acaenb = 0 */
+	val |= BIT(4);            /* id_sel low bit = 1 */
+	val &= ~BIT(5);           /* id_sel high bit = 0  → id_sel = 01 (PHY iddig) */
 	writel(val, usb->ahbif + AHBIF_CTRL0);
 
 	/* Step 6: Write eye diagram parameter to ctrl3 */

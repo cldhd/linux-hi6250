@@ -1419,11 +1419,26 @@ static int dwc2_hsotg_ep_queue(struct usb_ep *ep, struct usb_request *req,
 		dwc2_wakeup_from_lpm_l1(hs, true);
 	}
 
-	/* Prevent new request submission when controller is suspended */
+	/*
+	 * Prevent new request submission when controller is suspended. On
+	 * Hi6250 we observe lx_state being left at L2 after a transient
+	 * USBSUSP between RESET and ENUMDONE, even though the controller is
+	 * actually active by then (DSTS.SuspSts == 0). In that case treat the
+	 * controller as awake so dwc2_hsotg_irq_enumdone() can re-arm EP0.
+	 */
 	if (hs->lx_state != DWC2_L0) {
-		dev_dbg(hs->dev, "%s: submit request only in active state\n",
-			__func__);
-		return -EAGAIN;
+		u32 dsts = dwc2_readl(hs, DSTS);
+
+		if (dsts & DSTS_SUSPSTS) {
+			dev_dbg(hs->dev,
+				"%s: submit request only in active state\n",
+				__func__);
+			return -EAGAIN;
+		}
+		dev_dbg(hs->dev,
+			"%s: lx_state=%d but DSTS shows active; forcing L0\n",
+			__func__, hs->lx_state);
+		hs->lx_state = DWC2_L0;
 	}
 
 	/* initialise status of the request */

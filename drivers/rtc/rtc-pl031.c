@@ -21,6 +21,7 @@
 #include <linux/delay.h>
 #include <linux/pm_wakeirq.h>
 #include <linux/slab.h>
+#include <linux/clk.h>
 
 /*
  * Register definitions
@@ -90,6 +91,7 @@ struct pl031_local {
 	struct pl031_vendor_data *vendor;
 	struct rtc_device *rtc;
 	void __iomem *base;
+	struct clk *clk;
 };
 
 static int pl031_alarm_irq_enable(struct device *dev,
@@ -317,6 +319,17 @@ static int pl031_probe(struct amba_device *adev, const struct amba_id *id)
 				   resource_size(&adev->res));
 	if (!ldata->base) {
 		ret = -ENOMEM;
+		goto out;
+	}
+
+	/*
+	 * Some integrations expose a second functional clock in addition to
+	 * the AMBA "apb_pclk". If present, enable it before touching RTC_CR.
+	 */
+	ldata->clk = devm_clk_get_optional_enabled(&adev->dev, "rtc");
+	if (IS_ERR(ldata->clk)) {
+		ret = dev_err_probe(&adev->dev, PTR_ERR(ldata->clk),
+				    "failed to enable rtc clock\n");
 		goto out;
 	}
 

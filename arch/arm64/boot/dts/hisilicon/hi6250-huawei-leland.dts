@@ -76,5 +76,11 @@
 /* Enable USB2 OTG */
 &usb_otg {
 	status = "okay";
+	/*
+	 * Empirical: with the CTRL0 bit-layout fix in place, this is the
+	 * value that lets the HS chirp succeed and the gadget enumerate
+	 * (also matches downstream linux-huawei-leland DTS). The stock-BL
+	 * handoff value 0x05cd06db produces FS-only / EPROTO chaos.
+	 */
 	hisilicon,eye-diagram-param = <0x059066DB>;
 };
