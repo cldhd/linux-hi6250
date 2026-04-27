@@ -402,9 +402,20 @@
 			reboot-offset = <0x4>;
 		};
 
+		/*
+		 * Custom Hi6250 LPM3-NMI reboot handler is disabled. The
+		 * downstream Huawei kernel uses standard PSCI 0.2 SYSTEM_RESET
+		 * (the trustzone implementation already drives LPM3 internally),
+		 * so we let mainline's `psci_sys_reset` handle reboot. Keeping
+		 * a parallel LPM3-NMI handler here makes the kernel spin in the
+		 * custom handler when LPM3 doesn't immediately reset, rather
+		 * than letting PSCI's restart handler (registered at higher
+		 * priority) actually do its job.
+		 */
 		hi6250_reboot: reboot {
 			compatible = "hisilicon,hi6250-reboot";
 			hisilicon,sys-ctrl = <&sys_ctrl>;
+			status = "disabled";
 		};
 		
 		crg_ctrl: crg_ctrl@fff35000 {
