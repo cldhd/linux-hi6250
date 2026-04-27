@@ -268,19 +268,36 @@ directly, landing at offset `0x1600000`, which is what the U-Boot
   workaround in `/etc/local.d/50-usb-network.start` avoids the issue
   because no class-specific control request returns a sized payload
   during ECM enumeration. A real fix needs an upstream dwc2 bisect.
-- **`reboot` only works once per cold boot.** After a TWRP/eRecovery
-  cold boot, the *first* `reboot` from PMOS userspace successfully
-  triggers PSCI `SYSTEM_RESET` and the device boots back into PMOS.
-  The *second* reboot in the same boot session hangs at
-  "Requesting system reboot": the kernel calls
-  `invoke_psci_fn(PSCI_0_2_FN_SYSTEM_RESET, …)`, the SMC returns
-  control without resetting the SoC, and the kernel falls through to
-  `pr_emerg("Reboot failed -- System halted")`. This is a state issue
-  in the (closed) trustzone implementation; we tried three kernel-side
-  workarounds (custom LPM3-NMI handler, registering at higher
-  notifier priority, arming the SP805 watchdog as a fallback) and
-  none of them fixes it. Recovery: hold Vol-Up + Power to enter TWRP,
-  then reboot from there.
+
+## Reboot path (PSCI is broken on this trustzone)
+
+Earlier versions of this README listed reboot as broken. It is now
+fixed. The diagnosis took some debugging:
+
+- The Hi6250 trustzone implementation **rejects** PSCI 0.2 calls
+  for both `SYSTEM_RESET` and `SYSTEM_OFF`, returning `0xffffffff`
+  (`PSCI_RET_NOT_SUPPORTED`).
+- Mainline's PSCI restart handler in `drivers/firmware/psci/`
+  invokes the SMC and returns `NOTIFY_DONE` regardless of the SMC's
+  return value. With no other restart handler installed, the kernel
+  falls through to `pr_emerg("Reboot failed -- System halted")` and
+  the device hangs at "Requesting system reboot" until the user
+  forces TWRP via Vol-Up + Power.
+- The actual reset path on this SoC is to NMI the LPM3
+  co-processor by pulsing bit 2 of `sysctrl + 0x510`
+  (`SCLPMCUCTRL.nmi_in`); LPM3 firmware then resets the SoC.
+- `drivers/power/reset/hi6250-reboot.c` (committed in this fork)
+  registers a `restart_handler` at priority 200 (above PSCI's 129)
+  that writes the BL "reboot reason" marker, tries PSCI for
+  cross-board compatibility, and finally pulses LPM3 NMI.
+  `CONFIG_POWER_RESET_HI6250=y` is now set in the saved
+  `arch/arm64/configs/huawei-leland_defconfig` — without that the
+  driver was silently being left out of the build, which is why
+  earlier "fixes" appeared to do nothing.
+
+Verified live 2026-04-27: 5+ consecutive `reboot`s from PMOS
+userspace all complete in ~43 s, BL boots back into PMOS each time,
+PMIC RTC drifts <1 s across the reset.
 - The kernel binary is built `7.0.0-gac38def65c79-dirty` because the
   USB-fix commit lands as a follow-up to `ac38def65c79`. After committing
   the patches in this README the `-dirty` suffix goes away and the

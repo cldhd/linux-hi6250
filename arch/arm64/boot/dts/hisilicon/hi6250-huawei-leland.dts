@@ -56,9 +56,17 @@
 			no-map;
 		};
 
-		ramoops@34800000 {
+		/*
+		 * The Huawei BL reserves 0x34800000-0x348fffff for its own
+		 * `pstore-mem` and clobbers it on cold boot, so a ramoops
+		 * region at that address never captures console data across
+		 * a reset. Move into the gap between isp-boot@34b00000 (ends
+		 * 0x34b1ffff) and hifi-data@34f00000 (starts 0x34f00000).
+		 * 0x34c00000 has been verified to survive BL hand-off.
+		 */
+		ramoops@34c00000 {
 			compatible = "ramoops";
-			reg = <0x0 0x34800000 0x0 0x100000>;
+			reg = <0x0 0x34c00000 0x0 0x100000>;
 			record-size = <0x20000>;
 			pmsg-size = <0x20000>;
 			console-size = <0x80000>;

@@ -414,6 +414,7 @@
 		hi6250_reboot: reboot {
 			compatible = "hisilicon,hi6250-reboot";
 			hisilicon,pmu-ctrl = <&pmu_ctrl>;
+			hisilicon,sys-ctrl = <&sys_ctrl>;
 		};
 		
 		crg_ctrl: crg_ctrl@fff35000 {
