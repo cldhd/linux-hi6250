@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * HiSilicon Hi6250 (Kirin 659) SoC reset code.
+ * HiSilicon Hi6250 (Kirin 659) reboot-reason marker.
  *
- * Unlike hi6220, the hi6250 does not reset via a simple magic-value
- * write to a sysctrl register. Instead the LPM3 co-processor handles
- * SoC reset: the AP writes a "reboot reason" byte into the PMIC HRST
- * register (memory-mapped through PMUCTRL) and pulses bit 2 of
- * sysctrl + 0x510 (NMI_NOTIFY_LPM3). LPM3 firmware then performs the
- * actual reset, and the Huawei BL1/BL2 bootloader reads the reason
- * byte to decide whether the previous boot ended cleanly.
+ * The Huawei BL1/BL2 bootloader on Kirin 659 phones reads a "reboot
+ * reason" byte from PMIC register 0x18B (PMIC HRST_REG0, memory-mapped
+ * through PMUCTRL at byte offset 0x62c with x4 stride) to decide
+ * whether the previous boot ended cleanly. Leaving the byte at its
+ * power-on default of 0xff is interpreted by the BL as an abnormal
+ * reset; after a handful of these the BL's failsafe counter trips and
+ * it force-boots into eRecovery instead of the system kernel.
  *
- * Skipping the reason write lets the byte sit at its power-on default
- * of 0xff, which the bootloader interprets as an abnormal reset; after
- * a handful of such resets the bootloader's failsafe counter trips and
- * it force-boots into eRecovery. Writing COLDBOOT (0x10) tells the
- * bootloader "this was a user-requested reboot" and keeps the counter
- * at rest.
+ * This driver registers a restart_handler that simply writes
+ * COLDBOOT (0x10) to that byte and returns. The actual SoC reset is
+ * left to mainline's PSCI restart handler (drivers/firmware/psci/),
+ * which runs after this one and issues PSCI_0_2_FN_SYSTEM_RESET via
+ * SMC. The trustzone implementation drives LPM3 internally and the
+ * SoC resets reliably.
  *
- * Mirrors the downstream `hisi_pm_system_reset` + `set_reboot_reason`
- * + `hisiap_nmi_notify_lpm3` path from Huawei's labyrinth_kernel_prague
- * 4.4 fork.
+ * An earlier version of this driver pulsed bit 2 of sysctrl + 0x510
+ * (SCLPMCUCTRL.nmi_in) to NMI the LPM3 co-processor directly and then
+ * spun in `cpu_do_idle()` waiting for LPM3 to act. In practice on this
+ * board that NMI did not always trigger a reset and the spin loop
+ * never returned, leaving the kernel hung at the end of the reboot
+ * sequence until the device was forcibly power-cycled. PSCI is the
+ * reliable path; this driver only stays around to set the BL marker.
  */
-#include <linux/delay.h>
-#include <linux/io.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
@@ -31,56 +33,48 @@
 #include <linux/reboot.h>
 #include <linux/regmap.h>
 
-#include <asm/proc-fns.h>
-
-#define HI6250_NMI_NOTIFY_LPM3_OFFSET	0x510
-#define HI6250_NMI_NOTIFY_LPM3_BIT	BIT(2)
-
-/* PMIC HRST_REG0 lives inside the PMUCTRL block. PMIC regs are strided
+/*
+ * PMIC HRST_REG0 lives inside the PMUCTRL block. PMIC regs are strided
  * x4 (val_bits=8, reg_stride=4), so reg 0x18B is at byte offset 0x62c.
  */
 #define HI6250_PMIC_HRST_REG0_OFFSET	0x62c
 #define HI6250_PMIC_HRST_REASON_MASK	0xff
 #define HI6250_REBOOT_REASON_COLDBOOT	0x10
 
-static struct regmap *sysctrl;
 static struct regmap *pmuctrl;
 
 static int hi6250_restart_handler(struct notifier_block *this,
 				  unsigned long mode, void *cmd)
 {
-	/* 1. Tag the reset as "user-requested cold boot" in the PMIC
-	 * HRST register so the bootloader does not count it as an
-	 * abnormal reset and trip its eRecovery failsafe.
+	/*
+	 * Tag the reset as "user-requested cold boot" in the PMIC HRST
+	 * register so the Huawei bootloader does not count it as an
+	 * abnormal reset and trip its eRecovery failsafe (after a few
+	 * "abnormal" resets the BL force-boots into eRecovery).
+	 *
+	 * That is the ONLY thing this handler does. The actual SoC reset
+	 * is left to mainline's PSCI restart handler (priority 0, runs
+	 * after this one). The trustzone implementation of
+	 * PSCI_0_2_FN_SYSTEM_RESET drives LPM3 internally and resets the
+	 * SoC reliably; the custom NMI-LPM3 path that used to live here
+	 * had a tendency to hang indefinitely waiting for LPM3 to act.
 	 */
 	if (pmuctrl)
 		regmap_update_bits(pmuctrl, HI6250_PMIC_HRST_REG0_OFFSET,
 				   HI6250_PMIC_HRST_REASON_MASK,
 				   HI6250_REBOOT_REASON_COLDBOOT);
 
-	/* 2. Rising edge on bit 2 of sysctrl + 0x510 NMIs the LPM3,
-	 * which triggers the actual SoC reset.
-	 */
-	regmap_update_bits(sysctrl, HI6250_NMI_NOTIFY_LPM3_OFFSET,
-			   HI6250_NMI_NOTIFY_LPM3_BIT,
-			   HI6250_NMI_NOTIFY_LPM3_BIT);
-	regmap_update_bits(sysctrl, HI6250_NMI_NOTIFY_LPM3_OFFSET,
-			   HI6250_NMI_NOTIFY_LPM3_BIT, 0);
-
-	/* LPM3 reset latency can exceed several seconds. Spin here so the
-	 * kernel does not fall through to machine_restart() cleanup (which
-	 * tears down fbcon/DRM and briefly restores the underlying
-	 * framebuffer image) and then loop in "Reboot failed -- System
-	 * halted" while waiting for LPM3.
-	 */
-	while (1)
-		cpu_do_idle();
-
 	return NOTIFY_DONE;
 }
 
 static struct notifier_block hi6250_restart_nb = {
 	.notifier_call = hi6250_restart_handler,
+	/*
+	 * Higher priority than mainline PSCI's restart handler (which
+	 * registers at priority 0 in drivers/firmware/psci/), so this
+	 * runs first and gets the marker into the PMIC before PSCI
+	 * triggers the actual SoC reset.
+	 */
 	.priority = 128,
 };
 
@@ -89,23 +83,11 @@ static int hi6250_reboot_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int err;
 
-	sysctrl = syscon_regmap_lookup_by_phandle(dev->of_node,
-						  "hisilicon,sys-ctrl");
-	if (IS_ERR(sysctrl))
-		return dev_err_probe(dev, PTR_ERR(sysctrl),
-				     "failed to get sys-ctrl regmap\n");
-
-	/* Optional: PMUCTRL is used to tag the reset reason for the
-	 * bootloader. If missing we still reboot via LPM3, but the
-	 * bootloader's failsafe counter may trip after repeated resets.
-	 */
 	pmuctrl = syscon_regmap_lookup_by_phandle(dev->of_node,
 						  "hisilicon,pmu-ctrl");
-	if (IS_ERR(pmuctrl)) {
-		dev_warn(dev, "no pmu-ctrl regmap (%ld); skipping reboot-reason tag\n",
-			 PTR_ERR(pmuctrl));
-		pmuctrl = NULL;
-	}
+	if (IS_ERR(pmuctrl))
+		return dev_err_probe(dev, PTR_ERR(pmuctrl),
+				     "failed to get pmu-ctrl regmap\n");
 
 	err = register_restart_handler(&hi6250_restart_nb);
 	if (err)

@@ -403,19 +403,17 @@
 		};
 
 		/*
-		 * Custom Hi6250 LPM3-NMI reboot handler is disabled. The
-		 * downstream Huawei kernel uses standard PSCI 0.2 SYSTEM_RESET
-		 * (the trustzone implementation already drives LPM3 internally),
-		 * so we let mainline's `psci_sys_reset` handle reboot. Keeping
-		 * a parallel LPM3-NMI handler here makes the kernel spin in the
-		 * custom handler when LPM3 doesn't immediately reset, rather
-		 * than letting PSCI's restart handler (registered at higher
-		 * priority) actually do its job.
+		 * The hi6250-reboot driver only writes the BL "reboot reason"
+		 * marker (COLDBOOT) into the PMIC HRST_REG0 byte, then returns
+		 * NOTIFY_DONE so mainline's PSCI restart handler issues the
+		 * actual SYSTEM_RESET. Without the marker the BL counts each
+		 * reboot as abnormal and after a few it force-boots into
+		 * eRecovery instead of system. The driver no longer touches
+		 * SCLPMCUCTRL (which used to spin forever waiting for LPM3).
 		 */
 		hi6250_reboot: reboot {
 			compatible = "hisilicon,hi6250-reboot";
-			hisilicon,sys-ctrl = <&sys_ctrl>;
-			status = "disabled";
+			hisilicon,pmu-ctrl = <&pmu_ctrl>;
 		};
 		
 		crg_ctrl: crg_ctrl@fff35000 {
