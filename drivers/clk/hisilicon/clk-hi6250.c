@@ -109,6 +109,39 @@ static void __init hi6250_clk_pmuctrl_init(struct device_node *np)
 CLK_OF_DECLARE_DRIVER(hi6250_clk_pmuctrl, "hisilicon,hi6250-pmuctrl", hi6250_clk_pmuctrl_init);
 
 
+// iomcu — clock provider for the IOMCU subsystem at 0xffd7e000.
+// Hosts the gate clocks for the IOMCU-attached i2c controllers
+// (i2c0 at ffd71000, i2c2 at ffd73000). Mirrors hi3660's IOMCU
+// clock layout: gate register offset 0x10, with bit 3 = i2c0 and
+// bit 5 = i2c2 (Hi3660 places bit 4 = i2c1, which doesn't exist
+// on Hi6250). The Hi6250 IOMCU IP block is the same hardware as
+// Hi3660's so the bit mapping is expected to be identical.
+
+static const struct hisi_gate_clock hi6250_iomcu_gate_sep_clks[] = {
+  { HI6250_CLK_I2C0_IOMCU, "clk_i2c0_iomcu", "clk_fll_src",
+    CLK_SET_RATE_PARENT, 0x10, 3, 0, },
+  { HI6250_CLK_I2C2_IOMCU, "clk_i2c2_iomcu", "clk_fll_src",
+    CLK_SET_RATE_PARENT, 0x10, 5, 0, },
+};
+
+static void __init hi6250_clk_iomcu_init(struct device_node *np)
+{
+	struct hisi_clock_data *clk_data_iomcu;
+
+	clk_data_iomcu = hisi_clk_init(np, HI6250_IOMCU_NR_CLKS);
+	if (!clk_data_iomcu) {
+		pr_err("hi6250-iomcu: hisi_clk_init FAILED\n");
+		return;
+	}
+	pr_info("hi6250-iomcu: init OK\n");
+
+	hisi_clk_register_gate_sep(hi6250_iomcu_gate_sep_clks,
+				   ARRAY_SIZE(hi6250_iomcu_gate_sep_clks),
+				   clk_data_iomcu);
+}
+CLK_OF_DECLARE_DRIVER(hi6250_clk_iomcu, "hisilicon,hi6250-iomcu-clock", hi6250_clk_iomcu_init);
+
+
 // pctrl
 // only stubs here ._.
 

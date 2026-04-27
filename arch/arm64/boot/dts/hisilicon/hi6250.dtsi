@@ -354,6 +354,30 @@
 			clock-names = "osc32khz", "osc32khz", "apb_pclk";
 		};
 
+		/*
+		 * SP805 watchdog. The Huawei BL arms it before handing off
+		 * to the kernel; arch/arm64/kernel/head.S currently disables
+		 * it on entry to avoid the BL's timeout firing during early
+		 * kernel boot. This DT node lets the mainline sp805_wdt
+		 * driver claim the device so userspace can re-arm it via
+		 * /dev/watchdog0 for hang detection. Input clock is the
+		 * always-on 32.768 kHz oscillator.
+		 */
+		watchdog: watchdog@e8a06000 {
+			compatible = "arm,sp805", "arm,primecell";
+			reg = <0x0 0xe8a06000 0x0 0x1000>;
+			interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ao_ctrl HI6250_OSC32KHZ>,
+				 <&ao_ctrl HI6250_APB_PCLK>;
+			clock-names = "wdog_clk", "apb_pclk";
+			/*
+			 * sp805_wdt reads this with device_property_read_u64
+			 * which needs the property to be 8 bytes; use /bits/
+			 * 64 instead of a plain <32768> single cell.
+			 */
+			clock-frequency = /bits/ 64 <32768>;
+		};
+
 		rtc0: rtc@fff04000 {
 			compatible = "arm,pl031", "arm,primecell";
 			reg = <0x0 0xfff04000 0x0 0x1000>;
@@ -424,8 +448,14 @@
 		};
 		
 		iomcu_ctrl: syscon@ffd7e000 {
-			compatible = "syscon";
+			/*
+			 * The IOMCU register block also acts as the clock
+			 * provider for the IOMCU-side i2c gates (mirrors
+			 * Hi3660's "iomcu" clock provider node).
+			 */
+			compatible = "hisilicon,hi6250-iomcu-clock", "syscon";
 			reg = <0x0 0xffd7e000 0x0 0x1000>;
+			#clock-cells = <1>;
 		};
 		
 		stub_clock: stub_clock {
@@ -605,10 +635,17 @@
 			interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			clocks = <&crg_ctrl HI6250_CLK_I2C0>;
-			resets = <&iomcu_rst 0x20 3>; // TODO: review
+			/*
+			 * IOMCU clock provider — clk_prepare_enable on this
+			 * gate is what ungates APB to the i2c0 controller.
+			 * The bogus `resets` entry that used to be here
+			 * (iomcu_rst 0x20 3) hangs the i2c probe and is
+			 * dropped — the BL leaves the controller out of
+			 * reset, no kernel-side reset deassert is needed.
+			 */
+			clocks = <&iomcu_ctrl HI6250_CLK_I2C0_IOMCU>;
 		};
-		
+
 		i2c2: i2c@ffd73000 {
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0xffd73000 0x0 0x1000>;
@@ -616,8 +653,7 @@
 			interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			clocks = <&crg_ctrl HI6250_CLK_I2C2>;
-			resets = <&iomcu_rst 0x20 5>; // TODO: review
+			clocks = <&iomcu_ctrl HI6250_CLK_I2C2_IOMCU>;
 		};
 
 		i2c3: i2c@fdf0c000 {

@@ -89,6 +89,16 @@ SYM_CODE_START(primary_entry)
 	 * Disable the SP805 hardware watchdog at 0xe8a06000 before it
 	 * reboots the device.  The bootloader arms it before jumping to
 	 * the kernel.  SP805 disable sequence: unlock, clear control, lock.
+	 *
+	 * NOTE: an attempt to use this watchdog for auto-reset on early-
+	 * boot hang failed because the SoC has a separate (undocumented)
+	 * clock gate for SP805 outside the mainline clock framework — the
+	 * counter does not decrement once the kernel takes over, even
+	 * with WATCHDOG_NOWAYOUT=y and a userspace pet daemon, so the
+	 * watchdog never fires. Leaving the BL-armed watchdog enabled
+	 * also doesn't work for the same reason. Until the SP805 clock
+	 * gate is reverse-engineered, recovery from a hung boot is
+	 * manual: hold Vol-Up + Power to enter TWRP.
 	 */
 	movz	x8, #0xe8a0, lsl #16
 	movk	x8, #0x6000		// x8 = 0xe8a06000 (watchdog base)

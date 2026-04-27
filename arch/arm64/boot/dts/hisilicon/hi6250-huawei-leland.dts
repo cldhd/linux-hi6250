@@ -92,3 +92,4 @@
 	 */
 	hisilicon,eye-diagram-param = <0x059066DB>;
 };
+

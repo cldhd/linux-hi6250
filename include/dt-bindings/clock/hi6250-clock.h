@@ -373,4 +373,14 @@
 #define HI6250_CLK_RXDCFG_MUX 223
 #define HI6250_CRGCTRL_NR_CLKS 224
 
+/*
+ * IOMCU clock provider (separate namespace; lives in iomcu_ctrl
+ * @0xffd7e000). Mirrors the layout of hi3660 — the IOMCU IP block
+ * is shared between Kirin 659 (Hi6250) and Kirin 970 (Hi3660), so
+ * the same gate offset 0x10 / bit mapping is expected to work.
+ */
+#define HI6250_CLK_I2C0_IOMCU 0
+#define HI6250_CLK_I2C2_IOMCU 1
+#define HI6250_IOMCU_NR_CLKS 2
+
 #endif
