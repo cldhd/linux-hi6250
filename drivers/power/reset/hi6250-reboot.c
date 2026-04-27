@@ -2,28 +2,30 @@
 /*
  * HiSilicon Hi6250 (Kirin 659) reboot-reason marker.
  *
- * The Huawei BL1/BL2 bootloader on Kirin 659 phones reads a "reboot
- * reason" byte from PMIC register 0x18B (PMIC HRST_REG0, memory-mapped
- * through PMUCTRL at byte offset 0x62c with x4 stride) to decide
- * whether the previous boot ended cleanly. Leaving the byte at its
- * power-on default of 0xff is interpreted by the BL as an abnormal
- * reset; after a handful of these the BL's failsafe counter trips and
- * it force-boots into eRecovery instead of the system kernel.
+ * The Huawei BL1/BL2 on Kirin 659 phones reads PMIC register 0x18B
+ * (PMIC HRST_REG0, memory-mapped through PMUCTRL at byte offset 0x62c
+ * with x4 stride) to decide whether the previous boot ended cleanly.
+ * Leaving the byte at the power-on default of 0xff is interpreted by
+ * the BL as an abnormal reset; after a handful of these the BL's
+ * failsafe counter trips and it force-boots into eRecovery instead
+ * of system.
  *
- * This driver registers a restart_handler that simply writes
- * COLDBOOT (0x10) to that byte and returns. The actual SoC reset is
- * left to mainline's PSCI restart handler (drivers/firmware/psci/),
- * which runs after this one and issues PSCI_0_2_FN_SYSTEM_RESET via
- * SMC. The trustzone implementation drives LPM3 internally and the
- * SoC resets reliably.
+ * This driver therefore writes COLDBOOT (0x10) into HRST_REG0 from
+ * its restart_handler and returns NOTIFY_DONE. The actual SoC reset
+ * is left to mainline's PSCI restart handler, which is registered at
+ * priority 129 in drivers/firmware/psci/ and runs after this one
+ * (this handler registers at priority 200).
  *
- * An earlier version of this driver pulsed bit 2 of sysctrl + 0x510
- * (SCLPMCUCTRL.nmi_in) to NMI the LPM3 co-processor directly and then
- * spun in `cpu_do_idle()` waiting for LPM3 to act. In practice on this
- * board that NMI did not always trigger a reset and the spin loop
- * never returned, leaving the kernel hung at the end of the reboot
- * sequence until the device was forcibly power-cycled. PSCI is the
- * reliable path; this driver only stays around to set the BL marker.
+ * KNOWN LIMITATION: PSCI's SYSTEM_RESET only resets the SoC reliably
+ * on the *first* `reboot` after a TWRP/eRecovery cold boot. From the
+ * second reboot onwards the trustzone returns control to the kernel
+ * without resetting and the kernel halts at "Requesting system
+ * reboot". The fix would need either a working SP805 watchdog (this
+ * SoC's WDT clock state across resets is not yet reverse-engineered)
+ * or a working LPM3 mailbox path (downstream Huawei kernel uses a
+ * complex multi-step IPC, not the simple NMI pulse the older version
+ * of this driver tried). Workaround: power-cycle into TWRP via
+ * Vol-Up + Power, then reboot from there.
  */
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
@@ -48,16 +50,8 @@ static int hi6250_restart_handler(struct notifier_block *this,
 {
 	/*
 	 * Tag the reset as "user-requested cold boot" in the PMIC HRST
-	 * register so the Huawei bootloader does not count it as an
-	 * abnormal reset and trip its eRecovery failsafe (after a few
-	 * "abnormal" resets the BL force-boots into eRecovery).
-	 *
-	 * That is the ONLY thing this handler does. The actual SoC reset
-	 * is left to mainline's PSCI restart handler (priority 0, runs
-	 * after this one). The trustzone implementation of
-	 * PSCI_0_2_FN_SYSTEM_RESET drives LPM3 internally and resets the
-	 * SoC reliably; the custom NMI-LPM3 path that used to live here
-	 * had a tendency to hang indefinitely waiting for LPM3 to act.
+	 * register so the Huawei BL does not count it as an abnormal
+	 * reset and trip its eRecovery failsafe.
 	 */
 	if (pmuctrl)
 		regmap_update_bits(pmuctrl, HI6250_PMIC_HRST_REG0_OFFSET,
@@ -70,12 +64,17 @@ static int hi6250_restart_handler(struct notifier_block *this,
 static struct notifier_block hi6250_restart_nb = {
 	.notifier_call = hi6250_restart_handler,
 	/*
-	 * Higher priority than mainline PSCI's restart handler (which
-	 * registers at priority 0 in drivers/firmware/psci/), so this
-	 * runs first and gets the marker into the PMIC before PSCI
-	 * triggers the actual SoC reset.
+	 * Mainline's PSCI restart handler in drivers/firmware/psci/ uses
+	 * .priority = 129. Notifier chains are walked in decreasing
+	 * priority order, so we must register at >129 to run BEFORE PSCI
+	 * — otherwise PSCI either resets the SoC before we have a chance
+	 * to set the BL marker (causing the BL to count this reboot as
+	 * abnormal and eventually force-boot into eRecovery), or PSCI's
+	 * SMC fails to reset and we end up writing the marker too late
+	 * for any reset to happen at all (system hangs at
+	 * "Requesting system reboot").
 	 */
-	.priority = 128,
+	.priority = 200,
 };
 
 static int hi6250_reboot_probe(struct platform_device *pdev)

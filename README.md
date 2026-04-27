@@ -268,6 +268,19 @@ directly, landing at offset `0x1600000`, which is what the U-Boot
   workaround in `/etc/local.d/50-usb-network.start` avoids the issue
   because no class-specific control request returns a sized payload
   during ECM enumeration. A real fix needs an upstream dwc2 bisect.
+- **`reboot` only works once per cold boot.** After a TWRP/eRecovery
+  cold boot, the *first* `reboot` from PMOS userspace successfully
+  triggers PSCI `SYSTEM_RESET` and the device boots back into PMOS.
+  The *second* reboot in the same boot session hangs at
+  "Requesting system reboot": the kernel calls
+  `invoke_psci_fn(PSCI_0_2_FN_SYSTEM_RESET, …)`, the SMC returns
+  control without resetting the SoC, and the kernel falls through to
+  `pr_emerg("Reboot failed -- System halted")`. This is a state issue
+  in the (closed) trustzone implementation; we tried three kernel-side
+  workarounds (custom LPM3-NMI handler, registering at higher
+  notifier priority, arming the SP805 watchdog as a fallback) and
+  none of them fixes it. Recovery: hold Vol-Up + Power to enter TWRP,
+  then reboot from there.
 - The kernel binary is built `7.0.0-gac38def65c79-dirty` because the
   USB-fix commit lands as a follow-up to `ac38def65c79`. After committing
   the patches in this README the `-dirty` suffix goes away and the
