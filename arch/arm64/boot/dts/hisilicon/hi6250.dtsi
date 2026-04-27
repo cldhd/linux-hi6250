@@ -353,6 +353,30 @@
 				<&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "osc32khz", "osc32khz", "apb_pclk";
 		};
+
+		rtc0: rtc@fff04000 {
+			compatible = "arm,pl031", "arm,primecell";
+			reg = <0x0 0xfff04000 0x0 0x1000>;
+			interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ao_ctrl HI6250_APB_PCLK>, <&sys_ctrl HI6250_PCLK_RTC>;
+			clock-names = "apb_pclk", "rtc";
+		};
+
+		/*
+		 * PMIC battery-backed RTC. The PMIC is on the SSI bus exposed
+		 * by pmu_ctrl@fff34000 with 4-byte stride; PMIC byte 0x1D0
+		 * (RTC data register 0) maps to MMIO 0x1D0 << 2 = 0x740.
+		 * Verified empirically that the BL has already enabled the
+		 * counter (RTCCTRL byte 0x1DC, bit 0 = 1) and it is ticking,
+		 * so the driver only needs to read/write the data + load
+		 * registers. Reg overlaps pmu_ctrl@fff34000/0x1000 syscon —
+		 * syscon does not take the region exclusively so an
+		 * independent platform_device can ioremap the 0x40 sub-window.
+		 */
+		pmic_rtc: rtc@fff34740 {
+			compatible = "hisilicon,hi6555v100-rtc";
+			reg = <0x0 0xfff34740 0x0 0x40>;
+		};
 		
 		ao_ctrl: ao_ctrl@fff0a000 {
 			compatible = "hisilicon,hi6250-aoctrl", "syscon";

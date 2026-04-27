@@ -199,9 +199,27 @@ working set and so were committed together.
   PL031 driver to coexist with `rtc-hi6555v100` as the wall-clock source.
 - **`drivers/power/reset/hi6250-reboot.c`** — small modifications.
 
-These pair with DT nodes in `hi6250-huawei-leland.dts` — `rtc@fff04000`
-(pl031 SoC RTC) and `rtc@fff34740` (PMIC RTC) — and a `hi6250-reboot`
-override.
+These pair with DT nodes in `arch/arm64/boot/dts/hisilicon/hi6250.dtsi`:
+
+- `rtc@fff04000` — PL031 SoC RTC (rtc1).
+- `rtc@fff34740` — PMIC RTC (rtc0; battery-backed; survives poweroff).
+  The address overlaps the `pmu_ctrl@fff34000 / 0x1000` syscon region.
+  This is intentional: the PMIC is on the SSI bus exposed by `pmu_ctrl`
+  with 4-byte stride, and PMIC byte 0x1D0 (RTC data register 0) maps to
+  MMIO offset `0x1D0 << 2 = 0x740`. The 0x40 sub-window is large enough
+  to cover the data, load and control registers (offsets 0x00, 0x20,
+  0x30 with 4-byte stride). The Hi6250 BL leaves `RTCCTRL` bit 0 = 1
+  so the counter is already enabled at handoff — the driver only
+  reads/writes the data + load registers.
+
+`rtc-hi6555v100` registers first and so becomes `rtc0`, which is the
+device the kernel uses for `CONFIG_RTC_HCTOSYS_DEVICE="rtc0"`. PL031
+is registered as `rtc1` and remains volatile (it does not have a
+battery-backed tick source on this board).
+
+**Verified working 2026-04-27:** `since_epoch` increments by 1 per
+second; `hwclock --systohc` writes the PMIC counter directly via
+the driver; PMIC counter persists across reboot (battery-backed).
 
 ## Boot flow
 
