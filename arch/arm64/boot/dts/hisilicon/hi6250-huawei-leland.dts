@@ -8,8 +8,10 @@
 /dts-v1/;
 
 #include "hi6250.dtsi"
+#include "hi6250-pinctrl.dtsi"
 #include "hi6250-huawei-bl-quirks.dtsi"
 #include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 
 / {
 	model = "Huawei Honor 9 Lite";
@@ -18,6 +20,25 @@
 
 	aliases {
 
+	};
+
+	/*
+	 * Fixed regulator standing in for the PMIC LDOs (ldo17 vci,
+	 * ldo4 vddio) that power the touchscreen. The Huawei BL has
+	 * already enabled both rails by the time the kernel takes over;
+	 * since we don't bind the PMIC driver in mainline (it crashes
+	 * Sxmo — see project_leland_pmic_chip.md), nothing in the kernel
+	 * touches them. Declaring an always-on fixed regulator here
+	 * satisfies cypress,tt21000's required `vdd-supply` binding
+	 * without the kernel having to control the rail.
+	 */
+	vreg_touch_vdd: regulator-touch-vdd {
+		compatible = "regulator-fixed";
+		regulator-name = "touch-vdd";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		regulator-always-on;
+		regulator-boot-on;
 	};
 
 	gpio-keys {
@@ -116,6 +137,50 @@
 /* Enable eMMC */
 &sdhci0 {
 	status = "okay";
+};
+
+/*
+ * Pinmux + pad-config controllers must be on for the i2c2 pinctrl
+ * references below to do anything. pmx0/pmx1 are mux registers
+ * (M0/M1/M2 etc.); pmx2/pmx3 are pad config (pull, drive strength,
+ * slew). hi6250-pinctrl.dtsi defines i2c2_pmx_func in pmx1 and
+ * i2c2_cfg_func in pmx3, both of which need to be probed.
+ */
+&pmx0 { status = "okay"; };
+&pmx1 { status = "okay"; };
+&pmx2 { status = "okay"; };
+&pmx3 { status = "okay"; };
+
+/*
+ * Enable i2c2 for the touchscreen. The stock LLD-* DTBs probe three
+ * touchscreen vendors on i2c2 (parade @ 0x1c, focaltech @ 0x38,
+ * goodix @ 0x14) and bind whichever responds. On this LLD-L31 unit
+ * a manual i2c bus scan after enabling LDO17 finds a device at
+ * 0x38 — so the panel is FocalTech FT5x06-family. Mainline
+ * `edt-ft5x06` driver supports it via `edt,edt-ft5306` (4.3"-7"
+ * panels — Honor 9 Lite is 5.65").
+ *
+ * IRQ on gpio28 pin 0, reset on gpio18 pin 1 (same wiring used for
+ * all three vendors per stock ts_kit).
+ */
+&i2c2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_pmx_func &i2c2_cfg_func>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	touchscreen@38 {
+		compatible = "edt,edt-ft5306";
+		reg = <0x38>;
+		interrupt-parent = <&gpio28>;
+		interrupts = <0 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpios = <&gpio18 1 GPIO_ACTIVE_LOW>;
+		vcc-supply = <&vreg_touch_vdd>;
+		iovcc-supply = <&vreg_touch_vdd>;
+		touchscreen-size-x = <1080>;
+		touchscreen-size-y = <2160>;
+	};
 };
 
 /* Enable USB2 OTG */

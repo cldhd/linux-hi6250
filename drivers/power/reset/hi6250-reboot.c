@@ -99,6 +99,25 @@
 #define HI6250_BOOTUP_KEYPOINT_MASK		0xff
 #define HI6250_STAGE_BOOTUP_END			250
 
+/*
+ * PMIC LDO17 (touch vci, ~3.0 V) and LDO4 (touch vddio, ~1.8 V).
+ * BL leaves LDO4 enabled but NOT LDO17, so the FocalTech touchscreen
+ * never gets analog power and doesn't respond on i2c2. Enable both
+ * here so the touch driver can probe.
+ *
+ * PMIC byte N at MMIO N*4 (4-byte SSI stride). Bit 0 of each
+ * ONOFF byte = enable.
+ *   PMIC_LDO4_ONOFF_ECO  byte 0x019 → MMIO 0x064
+ *   PMIC_LDO17_ONOFF_ECO byte 0x025 → MMIO 0x094
+ *
+ * This is a temporary stand-in for a proper hi655x-pmic regulator
+ * binding that we can't enable yet (the mainline driver crashes
+ * Sxmo on this hi6555c chip — see project_leland_pmic_chip.md).
+ */
+#define HI6250_PMIC_LDO4_ONOFF_OFFSET		0x064
+#define HI6250_PMIC_LDO17_ONOFF_OFFSET		0x094
+#define HI6250_PMIC_LDO_ENABLE_BIT		0x01
+
 /* Sysctrl SCLPMCUCTRL: bit 2 = nmi_in to LPM3 */
 #define HI6250_SCTRL_SCLPMCUCTRL	0x510
 #define HI6250_SCTRL_NMI_IN_BIT		BIT(2)
@@ -269,6 +288,15 @@ static int hi6250_reboot_probe(struct platform_device *pdev)
 				   HI6250_STAGE_BOOTUP_END);
 		dev_info(dev, "wrote BOOTUP_KEYPOINT = %d (STAGE_BOOTUP_END)\n",
 			 HI6250_STAGE_BOOTUP_END);
+
+		/* See LDO4/LDO17 comment above — temporary stand-in. */
+		regmap_update_bits(pmuctrl, HI6250_PMIC_LDO4_ONOFF_OFFSET,
+				   HI6250_PMIC_LDO_ENABLE_BIT,
+				   HI6250_PMIC_LDO_ENABLE_BIT);
+		regmap_update_bits(pmuctrl, HI6250_PMIC_LDO17_ONOFF_OFFSET,
+				   HI6250_PMIC_LDO_ENABLE_BIT,
+				   HI6250_PMIC_LDO_ENABLE_BIT);
+		dev_info(dev, "enabled PMIC LDO4 (touch vddio) + LDO17 (touch vci)\n");
 	}
 
 	return 0;

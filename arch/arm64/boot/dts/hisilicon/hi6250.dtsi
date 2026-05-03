@@ -585,7 +585,7 @@
 		};
 		
 		pmx0: pinmux@e896c000 {
-			compatible = "pinconf-single";
+			compatible = "pinctrl-single";
 			reg = <0x0 0xe896c000 0x0 0x228>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -597,8 +597,8 @@
 		};
 
 		pmx1: pinmux@fff11000 {
-			compatible = "pinconf-single";
-			reg = <0x0 0xe896c800 0x0 0xac>;
+			compatible = "pinctrl-single";
+			reg = <0x0 0xfff11000 0x0 0xac>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			#pinctrl-cells = <1>;
