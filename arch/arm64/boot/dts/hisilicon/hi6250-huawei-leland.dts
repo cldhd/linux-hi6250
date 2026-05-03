@@ -9,6 +9,7 @@
 
 #include "hi6250.dtsi"
 #include "hi6250-huawei-bl-quirks.dtsi"
+#include <dt-bindings/input/linux-event-codes.h>
 
 / {
 	model = "Huawei Honor 9 Lite";
@@ -17,6 +18,25 @@
 
 	aliases {
 
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		autorepeat;
+
+		key-vol-up {
+			label = "Volume Up";
+			gpios = <&gpio25 1 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+			debounce-interval = <50>;
+		};
+
+		key-vol-down {
+			label = "Volume Down";
+			gpios = <&gpio25 2 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEDOWN>;
+			debounce-interval = <50>;
+		};
 	};
 
 	memory@0 {
@@ -76,6 +96,23 @@
 
 };
 
+/*
+ * Powerhold pin — pulling gpio25 pin 4 low tells the PMIC enable
+ * hold input to release main rails (the only software-triggerable
+ * true power-off on this board). Per stock `hisi,powerhold` node
+ * across all LLD-* DTBs in backup/partitions/dts.img: PL061 base
+ * 0xfff0e000 (gpio25), offset 4, ACTIVE_HIGH-while-running so
+ * driving low cuts power.
+ *
+ * Used by hi6250-reboot.c via `huawei,powerhold-gpios` instead of
+ * the generic gpio-poweroff driver — the generic driver toggles
+ * LOW→HIGH→LOW which the hi6555c PMIC seems to mis-debounce. The
+ * downstream Huawei kernel issues a single LOW pulse and waits.
+ */
+&hi6250_reboot {
+	huawei,powerhold-gpios = <&gpio25 4 GPIO_ACTIVE_LOW>;
+};
+
 /* Enable eMMC */
 &sdhci0 {
 	status = "okay";
@@ -92,4 +129,16 @@
 	 */
 	hisilicon,eye-diagram-param = <0x059066DB>;
 };
+
+/*
+ * NOTE: tried enabling &pmic (hisilicon,hi655x-pmic) with
+ * pmic-gpios = <&gpio23 7 GPIO_ACTIVE_HIGH> to bring up the powerkey
+ * sub-driver. Booted past Sxmo UI, then hard-reset within seconds —
+ * even with regulator-always-on on every dtsi-listed LDO. Downstream
+ * ramoops shows the chip is actually "hi6555c", which may differ from
+ * the hi655x register layout the mainline driver assumes. Powerkey
+ * needs a different approach (custom driver against the working
+ * pmic_rtc reg window, or get the IRQ chip without the regulator
+ * sub-device).
+ */
 

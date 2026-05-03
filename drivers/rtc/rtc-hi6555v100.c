@@ -76,15 +76,25 @@ static int hi6555_rtc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct hi6555_rtc *rtc;
+	struct resource *res;
 	u8 ctrl;
 
 	rtc = devm_kzalloc(dev, sizeof(*rtc), GFP_KERNEL);
 	if (!rtc)
 		return -ENOMEM;
 
-	rtc->base = devm_platform_ioremap_resource(pdev, 0);
-	if (IS_ERR(rtc->base))
-		return PTR_ERR(rtc->base);
+	/*
+	 * The reg window overlaps both pmu_ctrl@fff34000 (syscon) and the
+	 * full hi655x-pmic@fff34000 region. Use devm_ioremap() so we don't
+	 * exclusively claim the resource — the PMIC driver needs to claim
+	 * the same parent region.
+	 */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -ENODEV;
+	rtc->base = devm_ioremap(dev, res->start, resource_size(res));
+	if (!rtc->base)
+		return -ENOMEM;
 
 	ctrl = readb(rtc->base + HI6555_RTC_CR);
 	if (!(ctrl & HI6555_RTC_CR_EN)) {
