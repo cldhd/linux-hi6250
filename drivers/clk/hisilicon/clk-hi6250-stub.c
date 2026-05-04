@@ -109,11 +109,37 @@ static int hi3660_mbox_unlock(void __iomem *base)
 }
 
 /*
+ * Acquire a channel: take it out of IDLE state and configure SRC. Done
+ * once per channel at probe — after the first xfer the channel sits in
+ * READY/ACK/DEST states and never returns to IDLE, so re-acquiring on
+ * each xfer would always time out.
+ */
+static int hi6250_lpm3_acquire_chan(struct hi6250_lpm3 *l, unsigned int chan)
+{
+	void __iomem *cb = l->base + MBOX_CH_REG(chan, 0);
+	unsigned int sval;
+	int retry;
+
+	for (retry = 10; retry; retry--) {
+		if (readl(cb + MBOX_MODE_REG) & MBOX_STATE_IDLE) {
+			writel(BIT(l->ack_irq), cb + MBOX_SRC_REG);
+			sval = readl(cb + MBOX_SRC_REG);
+			if (sval & BIT(l->ack_irq))
+				return 0;
+		}
+		udelay(10);
+	}
+	return -ETIMEDOUT;
+}
+
+/*
  * Sync xfer: send `tx` (8 words) on `chan`, wait for LPM3 to manually ACK
  * and write a reply into the same MBOX_DATA_REG slots. Returns 0 on
  * success, -ETIMEDOUT if LPM3 didn't ACK within `timeout_us`.
  *
  * Pass rx=NULL to discard the reply (still requires ACK).
+ *
+ * Channel must already be acquired (see hi6250_lpm3_acquire_chan).
  */
 static int hi6250_lpm3_xfer_sync_chan(struct hi6250_lpm3 *l, unsigned int chan,
 				      const u32 tx[MBOX_MSG_LEN],
@@ -121,8 +147,8 @@ static int hi6250_lpm3_xfer_sync_chan(struct hi6250_lpm3 *l, unsigned int chan,
 				      unsigned int timeout_us)
 {
 	void __iomem *cb = l->base + MBOX_CH_REG(chan, 0);
-	unsigned int val, sval;
-	int ret, i, retry;
+	unsigned int val;
+	int ret, i;
 
 	mutex_lock(&l->lock);
 
@@ -132,26 +158,20 @@ static int hi6250_lpm3_xfer_sync_chan(struct hi6250_lpm3 *l, unsigned int chan,
 		goto out;
 	}
 
-	for (retry = 10; retry; retry--) {
-		if (readl(cb + MBOX_MODE_REG) & MBOX_STATE_IDLE) {
-			writel(BIT(l->ack_irq), cb + MBOX_SRC_REG);
-			sval = readl(cb + MBOX_SRC_REG);
-			if (sval & BIT(l->ack_irq))
-				break;
-		}
-	}
-	if (!retry) {
-		dev_err(l->dev, "channel %u acquire timeout\n", chan);
-		ret = -ETIMEDOUT;
-		goto out;
-	}
-
-	/* Wait for any prior outstanding ACK on this channel to be cleared. */
+	/*
+	 * Wait for the channel to be ready. After the first xfer the
+	 * channel sits in READY (when ack already cleared) or ACK (when
+	 * a prior LPM3 reply hasn't been processed yet). Match the
+	 * upstream hi3660-mailbox.c flow: on READY, proceed; otherwise
+	 * poll for ACK and clear it.
+	 */
 	if (!(readl(cb + MBOX_MODE_REG) & MBOX_STATE_READY)) {
-		ret = readl_poll_timeout_atomic(cb + MBOX_MODE_REG, val,
-						(val & MBOX_STATE_ACK), 10, 5000);
+		ret = readl_poll_timeout(cb + MBOX_MODE_REG, val,
+					 (val & MBOX_STATE_ACK), 100, 50000);
 		if (ret) {
-			dev_err(l->dev, "stale state, no prior ACK seen\n");
+			dev_err(l->dev,
+				"channel %u not READY/ACK, MODE_REG=%#x\n",
+				chan, readl(cb + MBOX_MODE_REG));
 			goto out;
 		}
 		writel(BIT(l->ack_irq), cb + MBOX_ICLR_REG);
@@ -426,6 +446,32 @@ static int hi6250_stub_clk_init_lpm3(struct device *dev)
 
 	dev_info(dev, "lpm3 mailbox @ %p chan=%u dst_irq=%u ack_irq=%u\n",
 		 lpm3.base, lpm3.chan, lpm3.dst_irq, lpm3.ack_irq);
+
+	ret = hi3660_mbox_unlock(lpm3.base);
+	if (ret) {
+		dev_err(dev, "initial ipc unlock failed: %d\n", ret);
+		return ret;
+	}
+
+	/*
+	 * Acquire the channels we'll be using up-front (freq votes on
+	 * 13, regulator IPC on 14). After acquire, the channel state
+	 * never returns to IDLE — subsequent xfers gate on READY/ACK
+	 * instead.
+	 */
+	ret = hi6250_lpm3_acquire_chan(&lpm3, LPM3_CHAN_FREQ_VOTE);
+	if (ret) {
+		dev_err(dev, "channel %u acquire failed: %d\n",
+			LPM3_CHAN_FREQ_VOTE, ret);
+		return ret;
+	}
+	ret = hi6250_lpm3_acquire_chan(&lpm3, LPM3_CHAN_REGULATOR);
+	if (ret) {
+		dev_err(dev, "channel %u acquire failed: %d\n",
+			LPM3_CHAN_REGULATOR, ret);
+		return ret;
+	}
+
 	return 0;
 }
 
