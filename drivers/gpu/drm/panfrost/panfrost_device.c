@@ -407,6 +407,18 @@ void panfrost_device_reset(struct panfrost_device *pfdev, bool enable_job_int)
 {
 	panfrost_gpu_soft_reset(pfdev);
 
+	/*
+	 * Re-apply config-register quirks (SHADER_CONFIG, TILER_CONFIG,
+	 * JM_CONFIG, plus any vendor-specific tweaks like Hisilicon's
+	 * PWR_KEY/PWR_OVERRIDE1 unlock). soft_reset clears these back to
+	 * defaults, but init_quirks runs only once during probe via
+	 * panfrost_gpu_init_features — without re-applying here, runtime
+	 * PM resume and recovery leave the GPU running without
+	 * workarounds, which manifests as e.g. T76X_3953 tiler glitches
+	 * (z-fighting, missing fragments) on Mali-T830.
+	 */
+	panfrost_gpu_init_quirks(pfdev);
+
 	panfrost_gpu_power_on(pfdev);
 	panfrost_mmu_reset(pfdev);
 

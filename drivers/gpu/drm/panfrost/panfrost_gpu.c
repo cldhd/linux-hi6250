@@ -118,6 +118,25 @@ int panfrost_gpu_soft_reset(struct panfrost_device *pfdev)
 		  GPU_IRQ_CLEAN_CACHES_COMPLETED);
 
 	/*
+	 * Clean+invalidate the GPU's L2 cache to ensure no stale data
+	 * survives across the reset. Mali-T830 in non-coherent mode is
+	 * particularly sensitive to this — without an explicit clean
+	 * after soft_reset, jobs that read shader bytecode or vertex
+	 * data hit cached lines that pre-date the CPU writes mesa just
+	 * made, manifesting as INSTR_INVALID_ENC or DATA_INVALID_FAULT.
+	 * Downstream's mali_kbase issues this via GPU_COMMAND in its
+	 * pm-init path.
+	 */
+	gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_CLEAN_CACHES_COMPLETED);
+	gpu_write(pfdev, GPU_CMD, GPU_CMD_CLEAN_INV_CACHES);
+	ret = readl_relaxed_poll_timeout(pfdev->iomem + GPU_INT_RAWSTAT, val,
+					 val & GPU_IRQ_CLEAN_CACHES_COMPLETED,
+					 100, 10000);
+	if (ret)
+		dev_warn(pfdev->base.dev, "L2 clean+inv timed out\n");
+	gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_CLEAN_CACHES_COMPLETED);
+
+	/*
 	 * All in-flight jobs should have released their cycle
 	 * counter references upon reset, but let us make sure
 	 */
@@ -160,7 +179,7 @@ void panfrost_gpu_hisi_kirin659_quirk(struct panfrost_device *pfdev)
 	gpu_write(pfdev, GPU_PWR_OVERRIDE1, 0xc4b00960);
 }
 
-static void panfrost_gpu_init_quirks(struct panfrost_device *pfdev)
+void panfrost_gpu_init_quirks(struct panfrost_device *pfdev)
 {
 	u32 quirks = 0;
 
