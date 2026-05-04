@@ -1078,15 +1078,22 @@
 		};
 
 		mali: gpu@e8970000 {
-			compatible = "arm,mali-t830";
+			compatible = "hisilicon,kirin659-mali", "arm,mali-t830";
 			reg = <0x0 0xe8970000 0x0 0x4000>;
 			status = "disable";
-			
+
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 258 IRQ_TYPE_LEVEL_HIGH>,
 					 <GIC_SPI 259 IRQ_TYPE_LEVEL_HIGH>,
 					 <GIC_SPI 260 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "JOB", "MMU", "GPU";
+			/*
+			 * Lowercase per the mainline panfrost driver:
+			 * `platform_get_irq_byname(dev, "gpu")` etc.
+			 * Stock Huawei DTS used uppercase JOB/MMU/GPU
+			 * for their proprietary out-of-tree Midgard
+			 * driver — incompatible with mainline.
+			 */
+			interrupt-names = "job", "mmu", "gpu";
 
 			clocks = <&stub_clock HI6250_CLK_STUB_GPU>;
 		};

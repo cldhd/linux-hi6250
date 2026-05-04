@@ -41,6 +41,26 @@
 		regulator-boot-on;
 	};
 
+	/*
+	 * Fixed regulator standing in for the GPU "g3d" rail. Stock
+	 * Huawei DT references <&g3d> from the PMIC with operating-points
+	 * spanning 0.696 V (120 MHz) to 1.073 V (900 MHz). Without a
+	 * working PMIC driver in mainline (the hi655x driver crashes
+	 * Sxmo on this hi6555c chip — see project_leland_pmic_chip.md)
+	 * we can't actually scale this rail. The BL leaves it on at
+	 * a working voltage, so a fixed regulator at the mid-range
+	 * value (744 mV @ 480 MHz) lets panfrost satisfy its
+	 * mali-supply binding without doing DVFS.
+	 */
+	vreg_mali: regulator-mali {
+		compatible = "regulator-fixed";
+		regulator-name = "mali";
+		regulator-min-microvolt = <744000>;
+		regulator-max-microvolt = <744000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		autorepeat;
@@ -217,4 +237,21 @@
  * pmic_rtc reg window, or get the IRQ chip without the regulator
  * sub-device).
  */
+
+/*
+ * Mali-T830 enabled. Power-up goes through clk-hi6250-stub.c's new
+ * prepare() hook, which talks to LPM3 firmware via direct register
+ * access on the hi3660-mbox: a freq vote on channel 13 (cmd
+ * 0x0003030A, 120 MHz) and a regulator-enable on channel 14 (cmd
+ * 0x00030004), both synchronous with LPM3-software ACK validation.
+ * LPM3 echoes the cmd in ack[0] on success — that's the only
+ * reliable signal the firmware is processing IPCs (the hardware
+ * auto-ack mode tells us nothing). Mali-supply is a fixed
+ * regulator stand-in since the actual rail is LPM3-controlled
+ * via the regulator IPC.
+ */
+&mali {
+	status = "okay";
+	mali-supply = <&vreg_mali>;
+};
 
