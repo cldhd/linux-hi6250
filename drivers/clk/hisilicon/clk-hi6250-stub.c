@@ -286,15 +286,21 @@ static int hi6250_stub_clk_set_rate(
 }
 
 /*
- * Default opening rate (MHz) per stub clock id. Picked from the
- * downstream OPP tables — ~120 MHz for GPU, conservative defaults
- * elsewhere. The LPM3 command takes a frequency in MHz as msg[1].
+ * Default opening rate (MHz) per stub clock id. The LPM3 command takes
+ * a frequency in MHz as msg[1].
+ *
+ * GPU defaults to 480 MHz — matches the downstream BL's `vreg_mali`
+ * stand-in voltage of 744 mV (mid-OPP between 696 mV @ 120 MHz and
+ * 1073 mV @ 900 MHz), enough headroom for Phosh compositing without
+ * burning idle power. Without devfreq wired up, this is what panfrost
+ * sees during the entire session — bumping it from 120 MHz visibly
+ * improves UI responsiveness.
  */
 static const unsigned int hi6250_stub_clk_default_mhz[HI6250_CLK_STUB_NUM] = {
 	[HI6250_CLK_STUB_CLUSTER0] = 480,
 	[HI6250_CLK_STUB_CLUSTER1] = 1402,
 	[HI6250_CLK_STUB_DDR]      = 240,
-	[HI6250_CLK_STUB_GPU]      = 120,
+	[HI6250_CLK_STUB_GPU]      = 480,
 };
 
 static int hi6250_stub_clk_prepare(struct clk_hw *hw)
@@ -330,36 +336,41 @@ static const struct clk_ops hi6250_stub_clk_ops = {
 	.set_rate       = hi6250_stub_clk_set_rate,
 };
 
-// mHz
+/*
+ * Frequency tables in Hz (matches CCF/OPP convention). LPM3 receives
+ * rate in MHz (rate/1000000) — see hi6250_stub_clk_send_vote.
+ * Index in each array maps to LPM3's freq_id stored in
+ * sysctrl + HI6250_STUB_CLOCK_BASE.
+ */
 static unsigned long hi6250_stub_clk_freqs_cluster0[] = {
-	480000000000,
-	807000000000,
-	1306000000000,
-	1709000000000,
+	 480000000,
+	 807000000,
+	1306000000,
+	1709000000,
 };
 static unsigned long hi6250_stub_clk_freqs_cluster1[] = {
-	1402000000000,
-	1805000000000,
-	2016000000000,
-	2112000000000,
-	2362000000000,
+	1402000000,
+	1805000000,
+	2016000000,
+	2112000000,
+	2362000000,
 };
 static unsigned long hi6250_stub_clk_freqs_ddr[] = {
-	120000000000,
-	240000000000,
-	360000000000,
-	533000000000,
-	800000000000,
-	933000000000,
+	120000000,
+	240000000,
+	360000000,
+	533000000,
+	800000000,
+	933000000,
 };
 static unsigned long hi6250_stub_clk_freqs_gpu[] = {
-	120000000000,
-	240000000000,
-	360000000000,
-	480000000000,
-	680000000000,
-	800000000000,
-	900000000000,
+	120000000,
+	240000000,
+	360000000,
+	480000000,
+	680000000,
+	800000000,
+	900000000,
 };
 
 static struct hi6250_stub_clk hi6250_stub_clks[HI6250_CLK_STUB_NUM] = {
