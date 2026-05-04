@@ -64,6 +64,30 @@ int panfrost_gpu_soft_reset(struct panfrost_device *pfdev)
 	int ret;
 	u32 val;
 
+	/*
+	 * On platforms where the BL leaves the GPU usable and reset
+	 * triggers an external abort (HiSilicon Kirin 659), skip the
+	 * reset sequence entirely. We still want IRQs masked/cleared
+	 * before the rest of init proceeds.
+	 */
+	if (pfdev->comp->skip_reset) {
+		gpu_write(pfdev, GPU_INT_MASK, 0);
+		gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_MASK_ALL);
+		gpu_write(pfdev, GPU_INT_MASK,
+			  GPU_IRQ_MASK_ERROR |
+			  GPU_IRQ_PERFCNT_SAMPLE_COMPLETED |
+			  GPU_IRQ_CLEAN_CACHES_COMPLETED);
+		return 0;
+	}
+
+	/*
+	 * Some SoCs (HiSilicon Kirin 659) require the GPU's power
+	 * manager to be unlocked before any reset access, otherwise the
+	 * reset operation itself triggers an SError on the AXI bus.
+	 */
+	if (pfdev->comp->pre_reset_quirk)
+		pfdev->comp->pre_reset_quirk(pfdev);
+
 	gpu_write(pfdev, GPU_INT_MASK, 0);
 	gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_RESET_COMPLETED);
 
@@ -112,6 +136,19 @@ void panfrost_gpu_amlogic_quirk(struct panfrost_device *pfdev)
 	 */
 	gpu_write(pfdev, GPU_PWR_KEY, GPU_PWR_KEY_UNLOCK);
 	gpu_write(pfdev, GPU_PWR_OVERRIDE1, 0xfff | (0x20 << 16));
+}
+
+void panfrost_gpu_hisi_kirin659_quirk(struct panfrost_device *pfdev)
+{
+	/*
+	 * Unused on the current Kirin 659 path: we use .skip_reset
+	 * instead of pre_reset_quirk because writing PWR_OVERRIDE1
+	 * (downstream's 0xc4b00960) triggers an SError on this SoC, so
+	 * just unlocking PWR_KEY isn't enough to make soft_reset work.
+	 * Kept here for future experimentation if a working unlock
+	 * sequence is discovered.
+	 */
+	gpu_write(pfdev, GPU_PWR_KEY, GPU_PWR_KEY_UNLOCK);
 }
 
 static void panfrost_gpu_init_quirks(struct panfrost_device *pfdev)

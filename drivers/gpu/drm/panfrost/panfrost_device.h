@@ -110,6 +110,24 @@ struct panfrost_compatible {
 	/* Vendor implementation quirks callback */
 	void (*vendor_quirk)(struct panfrost_device *pfdev);
 
+	/*
+	 * Pre-reset quirks callback. Runs at the start of
+	 * panfrost_gpu_soft_reset before any GPU register writes — for
+	 * SoCs (e.g. HiSilicon Kirin 659) where reset itself triggers an
+	 * SError unless the GPU's PWR_KEY/PWR_OVERRIDE1 are unlocked first.
+	 */
+	void (*pre_reset_quirk)(struct panfrost_device *pfdev);
+
+	/*
+	 * Skip the GPU soft/hard reset during init entirely. Used on
+	 * SoCs where the bootloader leaves the GPU in a usable state and
+	 * panfrost's reset sequence triggers an external abort
+	 * (HiSilicon Kirin 659 / Mali-T830 — reset writes the GPU_CMD
+	 * register and polls GPU_INT_RAWSTAT, the second of which traps
+	 * SError on the AXI bus on this hardware).
+	 */
+	bool skip_reset;
+
 	/* Allowed PM features */
 	u8 pm_features;
 
