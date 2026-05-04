@@ -1092,6 +1092,7 @@ static const struct panfrost_compatible amlogic_data = {
 static const struct panfrost_compatible hisi_kirin659_data = {
 	.num_supplies = ARRAY_SIZE(default_supplies) - 1,
 	.supply_names = default_supplies,
+	.vendor_quirk = panfrost_gpu_hisi_kirin659_quirk,
 };
 
 static const char * const mediatek_pm_domains[] = { "core0", "core1", "core2",

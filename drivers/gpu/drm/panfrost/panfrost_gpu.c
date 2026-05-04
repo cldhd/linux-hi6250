@@ -141,14 +141,23 @@ void panfrost_gpu_amlogic_quirk(struct panfrost_device *pfdev)
 void panfrost_gpu_hisi_kirin659_quirk(struct panfrost_device *pfdev)
 {
 	/*
-	 * Unused on the current Kirin 659 path: we use .skip_reset
-	 * instead of pre_reset_quirk because writing PWR_OVERRIDE1
-	 * (downstream's 0xc4b00960) triggers an SError on this SoC, so
-	 * just unlocking PWR_KEY isn't enough to make soft_reset work.
-	 * Kept here for future experimentation if a working unlock
-	 * sequence is discovered.
+	 * The Mali-T830 in HiSilicon Kirin 659 reports as t83x major=1
+	 * minor=0 but downstream's mali_kbase platform code maps that ID
+	 * to the t830_r2p0 hi-features set, which has KBASE_FEATURE_HI0004
+	 * — meaning it writes these undocumented bits in PWR_KEY/
+	 * PWR_OVERRIDE1 on every power-on. Without them the GPU rejects
+	 * shader bytecode with INSTR_INVALID_ENC job faults on every job.
+	 *
+	 * Values mirror downstream's `KBASE_PWR_KEY_VALUE` and
+	 * `KBASE_PWR_OVERRIDE_VALUE` from
+	 * drivers/gpu/arm/r20p0-01rel0/platform/hisilicon/
+	 *    mali_kbase_config_platform.h.
+	 *
+	 * Runs as `vendor_quirk` so it executes after soft_reset has put
+	 * the GPU in a known state.
 	 */
 	gpu_write(pfdev, GPU_PWR_KEY, GPU_PWR_KEY_UNLOCK);
+	gpu_write(pfdev, GPU_PWR_OVERRIDE1, 0xc4b00960);
 }
 
 static void panfrost_gpu_init_quirks(struct panfrost_device *pfdev)
