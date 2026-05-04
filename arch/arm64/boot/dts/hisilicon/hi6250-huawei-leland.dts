@@ -67,7 +67,18 @@
 	};
 
 	chosen {
-		bootargs = "console=tty0 loglevel=8 root=/dev/mmcblk0p51 rootfstype=ext4 rw rootwait";
+		/*
+		 * cpuidle.off=1 — disable deep cpuidle states. Mainline
+		 * doesn't have a proper Hi6250 cpuidle driver, so secondary
+		 * CPUs entering deeper idle states (anything past WFI) lose
+		 * their timer wake source and stall indefinitely. After ~1 h
+		 * uptime the kernel starts logging
+		 *   rcu: INFO: rcu_preempt detected stalls on CPUs/tasks
+		 *   Possible timer handling issue on cpu=N timer-softirq=...
+		 * every 25 s and load avg climbs. Pinning to plain WFI
+		 * eliminates this at a small idle-power cost.
+		 */
+		bootargs = "console=tty0 loglevel=8 cpuidle.off=1 root=/dev/mmcblk0p51 rootfstype=ext4 rw rootwait";
 
 		#address-cells = <2>;
 		#size-cells = <2>;
