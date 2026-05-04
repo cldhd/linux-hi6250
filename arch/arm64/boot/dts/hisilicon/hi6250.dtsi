@@ -1096,6 +1096,52 @@
 			interrupt-names = "job", "mmu", "gpu";
 
 			clocks = <&stub_clock HI6250_CLK_STUB_GPU>;
+
+			operating-points-v2 = <&mali_opp_table>;
+		};
+
+		/*
+		 * Operating points for Mali-T830. Frequencies match the
+		 * LPM3 freq table indexed by clk-hi6250-stub.c
+		 * (hi6250_stub_clk_freqs_gpu[]). Voltages are nominal —
+		 * voltage scaling actually happens inside LPM3 firmware
+		 * when it processes the freq vote on channel 13. The
+		 * values here matter only for OPP framework bookkeeping
+		 * and need to fit within `vreg_mali`'s fixed range
+		 * (744 mV) on boards that use that stand-in regulator.
+		 *
+		 * panfrost reads this table and creates a devfreq with
+		 * simple_ondemand governor, so the GPU now scales between
+		 * 120 MHz idle and 800 MHz under load instead of being
+		 * pinned to whatever rate prepare() voted at boot.
+		 */
+		mali_opp_table: opp-table-mali {
+			compatible = "operating-points-v2";
+
+			opp-120000000 {
+				opp-hz = /bits/ 64 <120000000>;
+				opp-microvolt = <744000>;
+			};
+			opp-240000000 {
+				opp-hz = /bits/ 64 <240000000>;
+				opp-microvolt = <744000>;
+			};
+			opp-360000000 {
+				opp-hz = /bits/ 64 <360000000>;
+				opp-microvolt = <744000>;
+			};
+			opp-480000000 {
+				opp-hz = /bits/ 64 <480000000>;
+				opp-microvolt = <744000>;
+			};
+			opp-680000000 {
+				opp-hz = /bits/ 64 <680000000>;
+				opp-microvolt = <744000>;
+			};
+			opp-800000000 {
+				opp-hz = /bits/ 64 <800000000>;
+				opp-microvolt = <744000>;
+			};
 		};
 
 		pmic: pmic@fff34000 {
