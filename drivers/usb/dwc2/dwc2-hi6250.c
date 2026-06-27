@@ -80,17 +80,18 @@ static int hi6250_usb2_poweron(struct hi6250_usb2 *usb)
 	u32 val;
 	int ret;
 
-	/* Dump initial state */
+	/* Dump initial state (dev_dbg — visible with dyndbg, kept for if
+	 * USB power-on ever regresses) */
 	regmap_read(usb->pericrg, PERI_CRG_RSTSTAT4, &val);
-	dev_info(dev, "Initial RSTSTAT4=0x%08x\n", val);
+	dev_dbg(dev, "initial RSTSTAT4=0x%08x\n", val);
 	regmap_read(usb->pericrg, PERI_CRG_CLKSTAT4, &val);
-	dev_info(dev, "Initial CLKSTAT4=0x%08x\n", val);
+	dev_dbg(dev, "initial CLKSTAT4=0x%08x\n", val);
 
 	/* Step 1: Configure ABB clock mux via PCTRL_PERI_CTRL24 */
 	ret = regmap_read(usb->pctrl, PCTRL_PERI_CTRL24, &val);
 	if (ret)
 		return ret;
-	dev_info(dev, "PCTRL24 before=0x%08x\n", val);
+	dev_dbg(dev, "PCTRL24 before=0x%08x\n", val);
 	val &= ~(7 << 24);
 	val |= (5 << 24);
 	regmap_write(usb->pctrl, PCTRL_PERI_CTRL24, val);
@@ -111,7 +112,7 @@ static int hi6250_usb2_poweron(struct hi6250_usb2 *usb)
 	/* Check framework's view of the register */
 	if (usb->pmuctrl) {
 		regmap_read(usb->pmuctrl, PMU_ABB_192_OFFSET, &val);
-		dev_info(dev, "PMU ABB_192 before direct write=0x%08x\n", val);
+		dev_dbg(dev, "PMU ABB_192 before direct write=0x%08x\n", val);
 
 		/*
 		 * The clock framework is NOT physically writing this register
@@ -122,12 +123,11 @@ static int hi6250_usb2_poweron(struct hi6250_usb2 *usb)
 		regmap_update_bits(usb->pmuctrl, PMU_ABB_192_OFFSET, BIT(0), BIT(0));
 		udelay(10);
 		regmap_read(usb->pmuctrl, PMU_ABB_192_OFFSET, &val);
-		dev_info(dev, "PMU ABB_192 after bit0=1 write=0x%08x\n", val);
+		dev_dbg(dev, "PMU ABB_192 after bit0=1 write=0x%08x\n", val);
 
-		/* If bit 0 didn't stick as 1, try the inverse (SET_TO_DISABLE) */
-		if (!(val & BIT(0))) {
-			dev_info(dev, "bit0=1 didn't stick; PMU gate may be inverted\n");
-		}
+		/* If bit 0 didn't stick as 1, framework gate polarity inverted */
+		if (!(val & BIT(0)))
+			dev_warn(dev, "PMU ABB_192 bit0 didn't latch — PHY ref clk may be off (check PMU gate polarity)\n");
 	}
 
 	/* Step 3: Enable HCLK_USB2OTG only (matches downstream exactly) */
@@ -135,14 +135,14 @@ static int hi6250_usb2_poweron(struct hi6250_usb2 *usb)
 	udelay(100);
 
 	regmap_read(usb->pericrg, PERI_CRG_CLKSTAT4, &val);
-	dev_info(dev, "CLKSTAT4 after clk_en=0x%08x\n", val);
+	dev_dbg(dev, "CLKSTAT4 after clk_en=0x%08x\n", val);
 
 	/* Step 4: Deassert AHB infrastructure resets */
 	regmap_write(usb->pericrg, PERI_CRG_RSTDIS4, USB2_RST_AHBIF);
 	udelay(100);
 
 	/* Dump AHBIF state */
-	dev_info(dev, "AHBIF: [00]=0x%08x [08]=0x%08x [0c]=0x%08x [10]=0x%08x [14]=0x%08x\n",
+	dev_dbg(dev, "AHBIF: [00]=0x%08x [08]=0x%08x [0c]=0x%08x [10]=0x%08x [14]=0x%08x\n",
 		 readl(usb->ahbif + 0x00),
 		 readl(usb->ahbif + 0x08), readl(usb->ahbif + 0x0c),
 		 readl(usb->ahbif + 0x10), readl(usb->ahbif + 0x14));
@@ -193,40 +193,56 @@ static int hi6250_usb2_poweron(struct hi6250_usb2 *usb)
 	/* Downstream waits 1ms here */
 	msleep(1);
 
-	/* Diagnostic: test if PHY clock is running */
+	/*
+	 * Diagnostic probe of the DWC2 controller before the main dwc2
+	 * driver attaches. The TX-FIFO-flush self-clear bit
+	 * (GRSTCTL.TxFFlsh, bit 10) can only complete when the PHY ref
+	 * clock is presented to the controller — so this is an indirect
+	 * probe of PHY-clock readiness.
+	 *
+	 * On Hi6250 this point in init is BEFORE the controller has
+	 * synced to the PHY clock (that happens later in dwc2 core
+	 * probe via PCGCTL writes), so seeing TxFFlsh still set here is
+	 * the *expected* state, not a failure. We keep the diagnostic
+	 * (dev_dbg) so an actual PHY-clock regression — bit10 stuck on
+	 * a later boot when we ALSO see USB enumeration fail — has a
+	 * traceable signature.
+	 */
 	{
 		void __iomem *dwc = ioremap(0xff100000, 0x1000);
 		if (dwc) {
 			u32 grstctl;
 
-			dev_info(dev, "DWC2: GSNPSID=0x%08x GUSBCFG=0x%08x PCGCTL=0x%08x\n",
-				 readl(dwc + 0x40), readl(dwc + 0x0c),
-				 readl(dwc + 0xe00));
+			dev_dbg(dev, "DWC2: GSNPSID=0x%08x GUSBCFG=0x%08x PCGCTL=0x%08x\n",
+				readl(dwc + 0x40), readl(dwc + 0x0c),
+				readl(dwc + 0xe00));
 
 			grstctl = readl(dwc + 0x10);
-			dev_info(dev, "GRSTCTL=0x%08x\n", grstctl);
+			dev_dbg(dev, "GRSTCTL=0x%08x\n", grstctl);
 
-			/* Try TX FIFO flush */
 			writel(0x80000410, dwc + 0x10);
 			udelay(200);
 			grstctl = readl(dwc + 0x10);
-			dev_info(dev, "GRSTCTL after flush=0x%08x%s\n", grstctl,
-				 (grstctl & BIT(10)) ? " (STUCK - no PHY clk)" :
-				 " (OK - PHY clk running)");
+			dev_dbg(dev,
+				"GRSTCTL after TxFFlsh=0x%08x (%s; main dwc2 probe will complete PHY sync)\n",
+				grstctl,
+				(grstctl & BIT(10)) ?
+					"TxFFlsh pending — PHY clock not yet synced (expected at this stage)" :
+					"TxFFlsh cleared — PHY clock already synced");
 
 			iounmap(dwc);
 		}
 	}
 
-	/* Final state dumps */
-	dev_info(dev, "AHBIF final: [00]=0x%08x [08]=0x%08x [10]=0x%08x [14]=0x%08x\n",
-		 readl(usb->ahbif + 0x00),
-		 readl(usb->ahbif + 0x08),
-		 readl(usb->ahbif + 0x10), readl(usb->ahbif + 0x14));
+	/* Final state dumps (dev_dbg — kept for regression triage) */
+	dev_dbg(dev, "AHBIF final: [00]=0x%08x [08]=0x%08x [10]=0x%08x [14]=0x%08x\n",
+		readl(usb->ahbif + 0x00),
+		readl(usb->ahbif + 0x08),
+		readl(usb->ahbif + 0x10), readl(usb->ahbif + 0x14));
 	regmap_read(usb->pericrg, PERI_CRG_RSTSTAT4, &val);
-	dev_info(dev, "Final RSTSTAT4=0x%08x\n", val);
+	dev_dbg(dev, "final RSTSTAT4=0x%08x\n", val);
 	regmap_read(usb->pericrg, PERI_CRG_CLKSTAT4, &val);
-	dev_info(dev, "Final CLKSTAT4=0x%08x\n", val);
+	dev_dbg(dev, "final CLKSTAT4=0x%08x\n", val);
 
 	dev_info(dev, "USB2 OTG power-on complete\n");
 	return 0;

@@ -127,14 +127,7 @@ int panfrost_gpu_soft_reset(struct panfrost_device *pfdev)
 	 * Downstream's mali_kbase issues this via GPU_COMMAND in its
 	 * pm-init path.
 	 */
-	gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_CLEAN_CACHES_COMPLETED);
-	gpu_write(pfdev, GPU_CMD, GPU_CMD_CLEAN_INV_CACHES);
-	ret = readl_relaxed_poll_timeout(pfdev->iomem + GPU_INT_RAWSTAT, val,
-					 val & GPU_IRQ_CLEAN_CACHES_COMPLETED,
-					 100, 10000);
-	if (ret)
-		dev_warn(pfdev->base.dev, "L2 clean+inv timed out\n");
-	gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_CLEAN_CACHES_COMPLETED);
+	panfrost_gpu_clean_inv_caches(pfdev);
 
 	/*
 	 * All in-flight jobs should have released their cycle
@@ -144,6 +137,32 @@ int panfrost_gpu_soft_reset(struct panfrost_device *pfdev)
 		atomic_set(&pfdev->cycle_counter.use_count, 0);
 
 	return 0;
+}
+
+int panfrost_gpu_clean_inv_caches(struct panfrost_device *pfdev)
+{
+	u32 saved_mask, val;
+	int ret;
+
+	/*
+	 * Mask the completion IRQ during the poll so the irq_handler
+	 * doesn't clear GPU_IRQ_CLEAN_CACHES_COMPLETED out from under us.
+	 */
+	saved_mask = gpu_read(pfdev, GPU_INT_MASK);
+	gpu_write(pfdev, GPU_INT_MASK,
+		  saved_mask & ~GPU_IRQ_CLEAN_CACHES_COMPLETED);
+
+	gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_CLEAN_CACHES_COMPLETED);
+	gpu_write(pfdev, GPU_CMD, GPU_CMD_CLEAN_INV_CACHES);
+	ret = readl_relaxed_poll_timeout(pfdev->iomem + GPU_INT_RAWSTAT, val,
+					 val & GPU_IRQ_CLEAN_CACHES_COMPLETED,
+					 10, 10000);
+	if (ret)
+		dev_warn_ratelimited(pfdev->base.dev,
+				     "L2 clean+inv timed out\n");
+	gpu_write(pfdev, GPU_INT_CLEAR, GPU_IRQ_CLEAN_CACHES_COMPLETED);
+	gpu_write(pfdev, GPU_INT_MASK, saved_mask);
+	return ret;
 }
 
 void panfrost_gpu_amlogic_quirk(struct panfrost_device *pfdev)
@@ -182,6 +201,18 @@ void panfrost_gpu_hisi_kirin659_quirk(struct panfrost_device *pfdev)
 void panfrost_gpu_init_quirks(struct panfrost_device *pfdev)
 {
 	u32 quirks = 0;
+
+	/*
+	 * Run platform vendor_quirk FIRST (PWR_KEY / PWR_OVERRIDE1 on
+	 * Hisilicon Kirin 659) so subsequent SHADER_CONFIG / TILER_CONFIG
+	 * / JM_CONFIG writes happen after any override registers are
+	 * unlocked. This matches downstream mali_kbase r20p0 ordering
+	 * (kbase_pm_reset_toplevel writes PWR_KEY/PWR_OVERRIDE1, THEN
+	 *  kbase_pm_hw_issues_apply writes the *_CONFIG registers) and
+	 * may affect how the GPU interprets shader/tiler config bits.
+	 */
+	if (pfdev->comp->vendor_quirk)
+		pfdev->comp->vendor_quirk(pfdev);
 
 	if (panfrost_has_hw_issue(pfdev, HW_ISSUE_8443) ||
 	    panfrost_has_hw_issue(pfdev, HW_ISSUE_11035))
@@ -233,10 +264,6 @@ void panfrost_gpu_init_quirks(struct panfrost_device *pfdev)
 
 	if (quirks)
 		gpu_write(pfdev, GPU_JM_CONFIG, quirks);
-
-	/* Here goes platform specific quirks */
-	if (pfdev->comp->vendor_quirk)
-		pfdev->comp->vendor_quirk(pfdev);
 }
 
 #define MAX_HW_REVS 6
