@@ -165,9 +165,77 @@
 	huawei,powerhold-gpios = <&gpio25 4 GPIO_ACTIVE_LOW>;
 };
 
+/*
+ * eMMC power sequencer.
+ *
+ * The Hynix HCG8a4 on this board is chronically marginal during the
+ * CMD6 SWITCH that widens the bus to 8-bit at init: ~67% of boots
+ * fail the SWITCH and the kernel falls back to 4-bit or 1-bit
+ * (~6 MB/s instead of >100 MB/s), and rarely the whole init times
+ * out with `-110 whilst initializing MMC card` and the device hangs
+ * at boot until a cold-boot.
+ *
+ * Runtime err_stats are perfectly clean once init completes — the
+ * chip itself is healthy. The failure is concentrated in the
+ * post-power-on settling window. Stock kernel uses dwc-mshc with
+ * an explicit ~100 ms settle; mainline `sdhci-of-arasan` lacks an
+ * equivalent.
+ *
+ * mmc-pwrseq-simple's `post-power-on-delay-ms` is the mainline-
+ * blessed mechanism for exactly this — it inserts the delay after
+ * mmc_power_up() and before the first CMD0, which is what the chip
+ * needs. No reset GPIO is required (the pwrseq_simple driver
+ * tolerates a node with only the delay property), so this is
+ * pure-DT and upstream-acceptable.
+ */
+/ {
+	emmc_pwrseq: emmc-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		/* 100 ms — 200 ms was worse (more 1-bit / -110 boots).
+		 * The chip seems to like the BL-warm state plus a
+		 * moderate delay, not a "fully cold" longer reset. */
+		post-power-on-delay-ms = <100>;
+	};
+};
+
 /* Enable eMMC */
 &sdhci0 {
 	status = "okay";
+	mmc-pwrseq = <&emmc_pwrseq>;
+
+	/*
+	 * Stock downstream DT specifies host & chip drive strengths
+	 * both at code 4 = 40Ω, vs mainline default of 50Ω. With
+	 * weaker default drivers, the 52 MHz / 8-bit data lines on
+	 * this board are marginal during the CMD6 SWITCH window.
+	 * Mainline applies drv-strength only on HS200/HS400 paths
+	 * (we're at HS due to no-1-8-v), so this DT property is
+	 * currently parsed + logged but the host-pad side waits on
+	 * a SoC-register write the open-source release doesn't ship.
+	 */
+	drv-strength = <4 4>;
+
+	/*
+	 * The Hynix HCG8a4 has its RST_n pin permanently enabled
+	 * (EXT_CSD[162] = 0x01 = RST_n_FUNCTION_ENABLED). With
+	 * cap-mmc-hw-reset advertised, mmc-core can issue a hardware
+	 * reset of the chip via the controller when init negotiation
+	 * fails — recovering the 1-of-10 case where we'd otherwise
+	 * fall back to 1-bit and incur a 120 s OpenRC udev-settle
+	 * timeout.
+	 */
+	cap-mmc-hw-reset;
+
+	/* Hynix HCG8a4 firmware advertises HPI but mishandles it
+	 * under contention; stock DT explicitly disables HPI for the
+	 * same chip. Pure DT override, mmc-core honors at probe. */
+	#address-cells = <1>;
+	#size-cells = <0>;
+	mmccard@0 {
+		reg = <0>;
+		compatible = "mmc-card";
+		broken-hpi;
+	};
 };
 
 /*

@@ -91,6 +91,25 @@
 #define VERSAL_NET_PHY_CTRL_STRB90_STRB180_VAL		0X77
 
 /*
+ * HiSilicon Hi6250 (Kirin 659) eMMC PHY registers, inside the Arasan
+ * controller window (host->ioaddr). Layout differs from the Intel
+ * PHY_CTRL_REG1/2 above, hence the HISI_ names. DR_TY drive-strength codes:
+ * 0=50R, 1=33R, 2=66R, 3=100R, 4=40R.
+ */
+#define HISI_PHY_CTRL1			0x430
+#define HISI_PHY_CTRL1_EN_DLL		BIT(7)
+#define HISI_PHY_CTRL1_DR_TY_SHIFT	22
+#define HISI_PHY_CTRL1_DR_TY_MASK	GENMASK(24, 22)
+#define HISI_PHY_CTRL3			0x438
+#define HISI_PHY_CTRL3_DLL_FREQ_SEL_SHIFT	28
+#define HISI_PHY_CTRL3_DLL_FREQ_SEL_MASK	GENMASK(30, 28)
+#define HISI_PHY_STATUS			0x440
+#define HISI_PHY_STATUS_DLLRDY		BIT(1)
+#define HISI_PHY_DRV_TYPE_40R		0x4
+/* DLL frequency-select buckets (stock): 50-80 MHz uses 0x4. */
+#define HISI_PHY_DLL_FREQ_SEL_50_80MHZ	0x4
+
+/*
  * On some SoCs the syscon area has a feature where the upper 16-bits of
  * each 32-bit register act as a write mask for the lower 16-bits.  This allows
  * atomic updates of the register without locking.  This macro is used on SoCs
@@ -189,6 +208,7 @@ struct sdhci_arasan_data {
 	struct phy	*phy;
 	bool		is_phy_on;
 	bool		internal_phy_reg;
+	bool		is_hi6250;
 
 	bool		has_cqe;
 	struct sdhci_arasan_clk_data clk_data;
@@ -352,6 +372,75 @@ static int sdhci_arasan_syscon_write(struct sdhci_host *host,
 	return ret;
 }
 
+/*
+ * Re-tune the Hi6250 eMMC PHY DLL to the band that matches the current clock,
+ * keeping it ENABLED. The bootloader leaves the DLL locked for its ~200 MHz
+ * kernel load (DLL_FREQ_SEL=0); at 52 MHz HS that delay is mistuned, which
+ * makes the CMD6/ext_csd 8-bit bus-width switch marginal. Disabling the DLL
+ * entirely (as stock does for HS) corrupts reads on this mainline kernel and
+ * panics root mount, so instead we relock the DLL at the correct 50-80 MHz
+ * band (0x4). Sequence mirrors stock PHY_set_dll: disable, set freq, enable,
+ * wait DLLRDY.
+ */
+static void sdhci_arasan_hi6250_retune_dll(struct sdhci_host *host, u32 freq_sel)
+{
+	u32 reg;
+	int ret;
+
+	reg = readl(host->ioaddr + HISI_PHY_CTRL1);
+	reg &= ~HISI_PHY_CTRL1_EN_DLL;
+	writel(reg, host->ioaddr + HISI_PHY_CTRL1);
+	udelay(10);
+
+	reg = readl(host->ioaddr + HISI_PHY_CTRL3);
+	reg &= ~HISI_PHY_CTRL3_DLL_FREQ_SEL_MASK;
+	reg |= (freq_sel << HISI_PHY_CTRL3_DLL_FREQ_SEL_SHIFT) &
+	       HISI_PHY_CTRL3_DLL_FREQ_SEL_MASK;
+	writel(reg, host->ioaddr + HISI_PHY_CTRL3);
+
+	reg = readl(host->ioaddr + HISI_PHY_CTRL1);
+	reg |= HISI_PHY_CTRL1_EN_DLL;
+	writel(reg, host->ioaddr + HISI_PHY_CTRL1);
+	udelay(10);
+
+	/*
+	 * Wait for the DLL to lock. A deep-cold eMMC takes meaningfully longer
+	 * to lock than a warm one; a bare busy-poll completes too fast on this
+	 * CPU and times out cold, leaving the DLL unlocked -> the next command
+	 * (HS-timing switch) CRCs (-84). Poll for up to 10 ms so we never
+	 * proceed before DLLRDY.
+	 */
+	ret = readl_relaxed_poll_timeout(host->ioaddr + HISI_PHY_STATUS, reg,
+					 (reg & HISI_PHY_STATUS_DLLRDY),
+					 10, 10000);
+	if (ret)
+		pr_warn("%s: Hi6250 PHY DLL not ready after retune\n",
+			mmc_hostname(host->mmc));
+}
+
+/*
+ * Per-timing PHY config. For HS (52 MHz, the only fast mode reachable while
+ * no-1-8-v blocks HS200/HS400/DDR): pin host drive strength to 40R and relock
+ * the DLL to the 50-80 MHz band. The TX/RX tap delays are left as the
+ * bootloader set them (reads work with those; disabling them was part of what
+ * broke earlier attempts).
+ */
+static void sdhci_arasan_hi6250_update_phy(struct sdhci_host *host)
+{
+	u32 reg;
+
+	if (host->mmc->ios.timing != MMC_TIMING_MMC_HS)
+		return;
+
+	reg = readl(host->ioaddr + HISI_PHY_CTRL1);
+	reg &= ~HISI_PHY_CTRL1_DR_TY_MASK;
+	reg |= (HISI_PHY_DRV_TYPE_40R << HISI_PHY_CTRL1_DR_TY_SHIFT) &
+	       HISI_PHY_CTRL1_DR_TY_MASK;
+	writel(reg, host->ioaddr + HISI_PHY_CTRL1);
+
+	sdhci_arasan_hi6250_retune_dll(host, HISI_PHY_DLL_FREQ_SEL_50_80MHZ);
+}
+
 static void sdhci_arasan_set_clock(struct sdhci_host *host, unsigned int clock)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -428,6 +517,9 @@ static void sdhci_arasan_set_clock(struct sdhci_host *host, unsigned int clock)
 	}
 
 	sdhci_set_clock(host, clock);
+
+	if (sdhci_arasan->is_hi6250 && clock > 0)
+		sdhci_arasan_hi6250_update_phy(host);
 
 	if (sdhci_arasan->internal_phy_reg && clock >= MIN_PHY_CLK_HZ)
 		sdhci_arasan_phy_set_dll(host, 1);
@@ -1538,6 +1630,18 @@ static const struct of_device_id sdhci_arasan_of_match[] = {
 		.compatible = "intel,keembay-sdhci-5.1-sdio",
 		.data = &intel_keembay_sdio_data,
 	},
+	{
+		/*
+		 * HiSilicon Hi6250 (Kirin 659): the eMMC controller IP is
+		 * "arasan,sdhci-4.9a" but Huawei's downstream DT carries
+		 * extra properties (drv-strength, broken-hpi, etc.) that
+		 * mainline doesn't parse. This compatible binds the generic
+		 * Arasan driver and lets sdhci_arasan_probe() consume the
+		 * SoC-specific props.
+		 */
+		.compatible = "hisilicon,hi6250-sdhci",
+		.data = &sdhci_arasan_generic_data,
+	},
 	/* Generic compatible below here */
 	{
 		.compatible = "arasan,sdhci-8.9a",
@@ -1915,6 +2019,71 @@ static int sdhci_arasan_probe(struct platform_device *pdev)
 	}
 
 	sdhci_get_of_property(pdev);
+
+	/*
+	 * HiSilicon Hi6250 downstream DT carries `drv-strength = <H D>`
+	 * where H is the host-pad drive strength and D is the eMMC chip's
+	 * I/O drive strength (both as MMC driver-type codes:
+	 * 0=50R, 1=33R, 2=66R, 3=100R, 4=40R). The CHIP side gets
+	 * applied by mmc-core via `card->drive_strength` once the kernel
+	 * negotiates a timing mode that supports drive-strength
+	 * selection (HS200/HS400; currently no-1-8-v in our DT blocks
+	 * those). The HOST side would need an SoC-specific MMIO write
+	 * that mainline doesn't have visibility into (the register isn't
+	 * in the GPL release of the BSP).
+	 *
+	 * For now: log what was requested and stash the chip side in
+	 * host->fixed_drv_type so that whenever HS200/HS400 ever becomes
+	 * active for this board, the right driver-type is committed.
+	 */
+	if (of_device_is_compatible(np, "hisilicon,hi6250-sdhci")) {
+		u32 drv_strength[2] = {0, 0};
+
+		/*
+		 * On each clock change, relock the eMMC PHY DLL to the band that
+		 * matches the clock (see sdhci_arasan_hi6250_update_phy). The
+		 * bootloader leaves it tuned for ~200 MHz; at 52 MHz HS that
+		 * mistuning makes the 8-bit bus-width switch marginal.
+		 */
+		sdhci_arasan->is_hi6250 = true;
+
+		if (of_property_read_u32_array(np, "drv-strength",
+					       drv_strength, 2) == 0) {
+			static const char * const drv_str[] = {
+				"50R", "33R", "66R", "100R", "40R"
+			};
+			const char *h_s = (drv_strength[0] < 5) ?
+				drv_str[drv_strength[0]] : "?";
+			const char *d_s = (drv_strength[1] < 5) ?
+				drv_str[drv_strength[1]] : "?";
+
+			dev_info(dev,
+				 "Hi6250: drv-strength host=%u (%s), chip=%u (%s)\n",
+				 drv_strength[0], h_s,
+				 drv_strength[1], d_s);
+
+			if (drv_strength[1] < 5)
+				host->mmc->fixed_drv_type = drv_strength[1];
+
+			/*
+			 * NOTE: experiments (2026-05-22) showed the BL
+			 * already programs the eMMC pad cluster in the
+			 * pinconf-single block (pmx2 @ 0xe896c800,
+			 * +0x008..+0x020) to drive-code 1 = 33Ω, which is
+			 * *stronger* than stock's requested 40Ω. Forcing
+			 * those 7 pads to 40Ω made 8-bit negotiation WORSE
+			 * (2/10 vs 9/10) — almost certainly because only a
+			 * subset of the eMMC pads live there and the rest
+			 * stay at 33Ω, creating an impedance mismatch that
+			 * skews the 8-bit data window. So we deliberately do
+			 * NOT rewrite the host pads: the BL default is fine
+			 * and the real win came from the mmc-pwrseq
+			 * post-power-on settling delay, not drive strength.
+			 * The chip-side fixed_drv_type above is retained for
+			 * the day HS200/HS400 is enabled.
+			 */
+		}
+	}
 
 	sdhci_arasan->clk_ahb = devm_clk_get(dev, "clk_ahb");
 	if (IS_ERR(sdhci_arasan->clk_ahb))

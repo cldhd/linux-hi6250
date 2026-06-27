@@ -352,6 +352,18 @@
 				<&ao_ctrl HI6250_OSC32KHZ>,
 				<&ao_ctrl HI6250_APB_PCLK>;
 			clock-names = "osc32khz", "osc32khz", "apb_pclk";
+			/*
+			 * Disabled: the mainline sp804 driver's
+			 * TIMER_OF_DECLARE init runs before the hi6250
+			 * clock provider's platform probe, so of_clk_get
+			 * returns -ENOENT for osc32khz/apb_pclk and the
+			 * timer init aborts with -EINVAL (the "-22" line
+			 * in dmesg). ARM Architected Timer is our active
+			 * clocksource — this SP804 is unused. Either
+			 * keep disabled, or convert clk-hi6250 to use
+			 * CLK_OF_DECLARE at early-init to fix properly.
+			 */
+			status = "disabled";
 		};
 
 		/*
@@ -1321,7 +1333,7 @@
 
 		// eMMC
 		sdhci0: sdhci@ff390000 {
-			compatible = "arasan,sdhci-4.9a";
+			compatible = "hisilicon,hi6250-sdhci", "arasan,sdhci-4.9a";
 			reg = <0x0 0xff390000 0x0 0x10000>;
 			interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&crg_ctrl HI6250_CLK_EMMC0>,
